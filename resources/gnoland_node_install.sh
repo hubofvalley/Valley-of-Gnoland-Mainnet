@@ -41,7 +41,7 @@ readonly PUBLIC_RPC="https://rpc.gno.land"
 
 GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-$HOME/gno}
 GNOLAND_DEPLOYMENT_DIR=${GNOLAND_DEPLOYMENT_DIR:-$GNO_SOURCE_DIR/misc/deployments/mainnet.gno.land}
-GNOLAND_HOME=${GNOLAND_HOME:-$GNO_SOURCE_DIR/gnoland-data}
+GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$GNO_SOURCE_DIR/gnoland-data}
 GNOKEY_HOME=${GNOKEY_HOME:-$HOME/.config/gno}
 GENESIS_FILE=${GNOLAND_GENESIS:-$GNOLAND_DEPLOYMENT_DIR/genesis.json}
 if [ "$(realpath -m "$GENESIS_FILE")" != "$(realpath -m "$GNOLAND_DEPLOYMENT_DIR/genesis.json")" ]; then
@@ -69,7 +69,7 @@ path_is_under_home() {
     esac
 }
 
-for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_HOME" "$GNOKEY_HOME" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
+for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOKEY_HOME" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
     if ! path_is_under_home "$instance_path"; then
         echo -e "${RED}Unsafe instance path outside $HOME: $instance_path${RESET}" >&2
         false
@@ -81,7 +81,7 @@ echo -e "${YELLOW}Installation and updates use the pinned ${SOURCE_BRANCH} sourc
 echo "Linux amd64 gnoland and gnokey assets are checked against their official SHA-256 values."
 echo "  Source / GNOROOT: $GNO_SOURCE_DIR"
 echo "  Mainnet deployment: $GNOLAND_DEPLOYMENT_DIR"
-echo "  Node data:        $GNOLAND_HOME"
+echo "  Node data:        $GNOLAND_MAINNET_HOME"
 echo "  Operator keyring: $GNOKEY_HOME"
 echo "  Network:          $CHAIN_ID"
 echo "  Source commit:    $SOURCE_COMMIT"
@@ -112,17 +112,17 @@ read -r -p "Configure UFW firewall rules for Gnoland? (y/n, default n): " SETUP_
 SETUP_UFW=${SETUP_UFW:-n}
 
 while :; do
-    if [ -z "${GNOLAND_SERVICE_NAME:-}" ]; then
-        read -r -p "Enter service name (default 'gnoland'): " GNOLAND_SERVICE_NAME
-        GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME:-gnoland}
+    if [ -z "${GNOLAND_MAINNET_SERVICE_NAME:-}" ]; then
+        read -r -p "Enter service name (default 'gnoland'): " GNOLAND_MAINNET_SERVICE_NAME
+        GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-gnoland}
     fi
-    GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME%.service}
-    if [[ "$GNOLAND_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]]; then break; fi
+    GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME%.service}
+    if [[ "$GNOLAND_MAINNET_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]]; then break; fi
     echo -e "${RED}Service name must start with a letter or number and may contain _, ., @, and -.${RESET}"
-    GNOLAND_SERVICE_NAME=""
+    GNOLAND_MAINNET_SERVICE_NAME=""
 done
 
-SERVICE_FILE="/etc/systemd/system/${GNOLAND_SERVICE_NAME}.service"
+SERVICE_FILE="/etc/systemd/system/${GNOLAND_MAINNET_SERVICE_NAME}.service"
 GNOLAND_RPC_PORT="${GNOLAND_PORT}657"
 GNOLAND_P2P_PORT="${GNOLAND_PORT}656"
 GNOLAND_ABCI_PORT="${GNOLAND_PORT}658"
@@ -132,7 +132,7 @@ BACKUP_DIR="$BACKUP_ROOT/$BACKUP_STAMP"
 
 service_belongs_to_instance() {
     local unit_user unit_workdir resolved_service_file
-    resolved_service_file=$(systemctl show "$GNOLAND_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+    resolved_service_file=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
     [ -n "$resolved_service_file" ] || return 0
     if [ ! -f "$resolved_service_file" ]; then
         echo -e "${RED}Cannot inspect existing service: $resolved_service_file${RESET}" >&2
@@ -141,7 +141,7 @@ service_belongs_to_instance() {
     unit_user=$(sed -n 's/^User=//p' "$resolved_service_file" | tail -n 1)
     unit_workdir=$(sed -n 's/^WorkingDirectory=//p' "$resolved_service_file" | tail -n 1)
     if [ "$unit_user" != "$OS_USER" ] || [ "$unit_workdir" != "$GNO_SOURCE_DIR" ]; then
-        echo -e "${RED}${GNOLAND_SERVICE_NAME}.service belongs to another instance.${RESET}" >&2
+        echo -e "${RED}${GNOLAND_MAINNET_SERVICE_NAME}.service belongs to another instance.${RESET}" >&2
         echo "Existing User=${unit_user:-unknown}, WorkingDirectory=${unit_workdir:-unknown}" >&2
         echo "Requested User=$OS_USER, WorkingDirectory=$GNO_SOURCE_DIR" >&2
         return 1
@@ -159,7 +159,7 @@ if ! command -v ss >/dev/null 2>&1; then
 fi
 service_belongs_to_instance
 
-if [ -z "$(systemctl show "$GNOLAND_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)" ]; then
+if [ -z "$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)" ]; then
     while ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; do
         echo -e "${RED}Port prefix $GNOLAND_PORT conflicts with a running listener.${RESET}"
         read -r -p "Enter another two-digit port prefix: " GNOLAND_PORT
@@ -189,14 +189,14 @@ echo -e "${YELLOW}Installation preview:${RESET}"
 echo "  Network:          $CHAIN_ID"
 echo "  Release:          $RELEASE_TAG ($RELEASE_COMMIT)"
 echo "  OS user:          $OS_USER"
-echo "  Service:          ${GNOLAND_SERVICE_NAME}.service"
+echo "  Service:          ${GNOLAND_MAINNET_SERVICE_NAME}.service"
 echo "  Binary directory: $HOME/go/bin"
 echo "  Source / GNOROOT: $GNO_SOURCE_DIR"
-echo "  Node data:        $GNOLAND_HOME"
+echo "  Node data:        $GNOLAND_MAINNET_HOME"
 echo "  Operator keyring: $GNOKEY_HOME"
 echo "  P2P/RPC/ABCI:     $GNOLAND_P2P_PORT / $GNOLAND_RPC_PORT / $GNOLAND_ABCI_PORT"
 echo
-echo -e "${YELLOW}This replaces Valley node data under $GNOLAND_HOME after the backup step.${RESET}"
+echo -e "${YELLOW}This replaces Valley node data under $GNOLAND_MAINNET_HOME after the backup step.${RESET}"
 echo "The local keyring at $GNOKEY_HOME is preserved."
 read -r -p "Type INSTALL-GNOLAND-1 to continue: " CONFIRM
 if [ "$CONFIRM" != "INSTALL-GNOLAND-1" ]; then
@@ -206,10 +206,10 @@ fi
 
 # A reinstall is destructive. Never replace an unknown existing node: only an
 # explicitly configured gnoland-1 service may be replaced by this path.
-EXISTING_SERVICE_FILE=$(systemctl show "$GNOLAND_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+EXISTING_SERVICE_FILE=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
 EXISTING_NODE_STATE=""
-if [ -d "$GNOLAND_HOME" ]; then
-    EXISTING_NODE_STATE=$(find "$GNOLAND_HOME" -mindepth 1 -print -quit 2>/dev/null || true)
+if [ -d "$GNOLAND_MAINNET_HOME" ]; then
+    EXISTING_NODE_STATE=$(find "$GNOLAND_MAINNET_HOME" -mindepth 1 -print -quit 2>/dev/null || true)
 fi
 if [ -n "$EXISTING_NODE_STATE" ] || [ -f "$GENESIS_FILE" ]; then
     if [ -z "$EXISTING_SERVICE_FILE" ] || [ ! -f "$EXISTING_SERVICE_FILE" ] || \
@@ -222,8 +222,8 @@ fi
 
 mkdir -p "$BACKUP_DIR"
 CURRENT_STAGE="backup existing node secrets and keyring"
-if [ -d "$GNOLAND_HOME/secrets" ]; then
-    tar -czf "$BACKUP_DIR/node-secrets.tar.gz" -C "$GNOLAND_HOME" secrets
+if [ -d "$GNOLAND_MAINNET_HOME/secrets" ]; then
+    tar -czf "$BACKUP_DIR/node-secrets.tar.gz" -C "$GNOLAND_MAINNET_HOME" secrets
     chmod 600 "$BACKUP_DIR/node-secrets.tar.gz"
     echo -e "${GREEN}Backed up node secrets to $BACKUP_DIR/node-secrets.tar.gz${RESET}"
 fi
@@ -233,14 +233,14 @@ if [ -d "$GNOKEY_HOME" ] && [ -n "$(find "$GNOKEY_HOME" -mindepth 1 -print -quit
     echo -e "${GREEN}Backed up operator keyring to $BACKUP_DIR/operator-keyring.tar.gz${RESET}"
 fi
 
-sudo systemctl stop "$GNOLAND_SERVICE_NAME" 2>/dev/null || true
+sudo systemctl stop "$GNOLAND_MAINNET_SERVICE_NAME" 2>/dev/null || true
 if ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; then
-    echo -e "${RED}Selected ports remain occupied after stopping ${GNOLAND_SERVICE_NAME}.service.${RESET}" >&2
+    echo -e "${RED}Selected ports remain occupied after stopping ${GNOLAND_MAINNET_SERVICE_NAME}.service.${RESET}" >&2
     false
 fi
-sudo systemctl disable "$GNOLAND_SERVICE_NAME" 2>/dev/null || true
+sudo systemctl disable "$GNOLAND_MAINNET_SERVICE_NAME" 2>/dev/null || true
 sudo rm -f "$SERVICE_FILE"
-rm -rf "$GNOLAND_HOME"
+rm -rf "$GNOLAND_MAINNET_HOME"
 rm -f "$GENESIS_FILE"
 sed -i '/GNOLAND_/d;/GNOKEY_/d;/GNO_SOURCE_DIR/d;/GNOROOT/d;/go\/bin/d' "$HOME/.bash_profile" 2>/dev/null || true
 
@@ -382,9 +382,9 @@ echo -e "${GREEN}Operator key selected: $OPERATOR_KEY_NAME${RESET}"
 
 cd "$GNO_SOURCE_DIR"
 CURRENT_STAGE="initialise gnoland config and node secrets"
-CONFIG_FILE="$GNOLAND_HOME/config/config.toml"
+CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
 "$GNOLAND_BIN" config init -force --config-path "$CONFIG_FILE"
-"$GNOLAND_BIN" secrets init -force --data-dir "$GNOLAND_HOME/secrets"
+"$GNOLAND_BIN" secrets init -force --data-dir "$GNOLAND_MAINNET_HOME/secrets"
 
 CURRENT_STAGE="download and verify release genesis"
 mkdir -p "$GNOLAND_DEPLOYMENT_DIR"
@@ -420,7 +420,7 @@ fi
 
 sudo tee "$SERVICE_FILE" >/dev/null <<EOF_SERVICE
 [Unit]
-Description=Gno.land gnoland-1 Node (${GNOLAND_SERVICE_NAME})
+Description=Gno.land gnoland-1 Node (${GNOLAND_MAINNET_SERVICE_NAME})
 After=network-online.target
 
 [Service]
@@ -428,7 +428,7 @@ User=$OS_USER
 WorkingDirectory=$GNO_SOURCE_DIR
 Environment=GNOROOT=$GNOROOT
 Environment=PATH=$HOME/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=$GNOLAND_BIN start --chainid $CHAIN_ID --genesis $GENESIS_FILE --data-dir $GNOLAND_HOME --gnoroot-dir $GNOROOT --skip-genesis-sig-verification --log-level info
+ExecStart=$GNOLAND_BIN start --chainid $CHAIN_ID --genesis $GENESIS_FILE --data-dir $GNOLAND_MAINNET_HOME --gnoroot-dir $GNOROOT --skip-genesis-sig-verification --log-level info
 StandardOutput=journal
 StandardError=journal
 Restart=on-failure
@@ -444,7 +444,7 @@ EOF_SERVICE
     echo "export GNOLAND_MONIKER=\"$GNOLAND_MONIKER\""
     echo "export GNOLAND_CHAIN_ID=\"$CHAIN_ID\""
     echo "export GNOLAND_PORT=\"$GNOLAND_PORT\""
-    echo "export GNOLAND_HOME=\"$GNOLAND_HOME\""
+    echo "export GNOLAND_MAINNET_HOME=\"$GNOLAND_MAINNET_HOME\""
     echo "export GNOLAND_DEPLOYMENT_DIR=\"$GNOLAND_DEPLOYMENT_DIR\""
     echo "export GNOLAND_GENESIS=\"$GENESIS_FILE\""
     echo "export GNOKEY_HOME=\"$GNOKEY_HOME\""
@@ -452,32 +452,32 @@ EOF_SERVICE
     echo "export GNO_SOURCE_DIR=\"$GNO_SOURCE_DIR\""
     echo "export GNOROOT=\"$GNOROOT\""
     echo 'export PATH="$HOME/go/bin:$PATH"'
-    echo "export GNOLAND_SERVICE_NAME=\"$GNOLAND_SERVICE_NAME\""
+    echo "export GNOLAND_MAINNET_SERVICE_NAME=\"$GNOLAND_MAINNET_SERVICE_NAME\""
     echo "export GNOLAND_REMOTE=\"http://127.0.0.1:${GNOLAND_RPC_PORT}\""
     echo "export GNOLAND_PUBLIC_REMOTE=\"$PUBLIC_RPC\""
 } >> "$HOME/.bash_profile"
 
 sudo systemctl daemon-reload
 CURRENT_STAGE="start gnoland-1 service"
-sudo systemctl enable "$GNOLAND_SERVICE_NAME"
-sudo systemctl restart "$GNOLAND_SERVICE_NAME"
+sudo systemctl enable "$GNOLAND_MAINNET_SERVICE_NAME"
+sudo systemctl restart "$GNOLAND_MAINNET_SERVICE_NAME"
 
 echo -e "${CYAN}Waiting for the gnoland-1 RPC startup check (up to 90 seconds).${RESET}"
 RPC_STATUS=""
 for _ in $(seq 1 90); do
-    if ! systemctl is-active --quiet "$GNOLAND_SERVICE_NAME"; then break; fi
+    if ! systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME"; then break; fi
     RPC_STATUS=$(curl -fsS "http://127.0.0.1:${GNOLAND_RPC_PORT}/status" 2>/dev/null || true)
     if [ -n "$RPC_STATUS" ]; then break; fi
     sleep 1
 done
 
 RPC_NETWORK=$(printf '%s' "$RPC_STATUS" | jq -r '.result.node_info.network // empty' 2>/dev/null || true)
-CONFIG_FILE="$GNOLAND_HOME/config/config.toml"
+CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
 CONFIG_ABCI_PORT=$(sed -n 's/^proxy_app = "tcp:\/\/127\.0\.0\.1:\([0-9][0-9]*\)"$/\1/p' "$CONFIG_FILE")
 CONFIG_P2P_PORT=$(awk -F: '/^[[:space:]]*\[p2p\][[:space:]]*$/ {in_p2p=1; next} /^[[:space:]]*\[/ {in_p2p=0} in_p2p && /^[[:space:]]*laddr = "tcp:\/\// {gsub(/".*/, "", $NF); print $NF; exit}' "$CONFIG_FILE")
 CONFIG_RPC_PORT=$(awk -F: '/^[[:space:]]*\[rpc\][[:space:]]*$/ {in_rpc=1; next} /^[[:space:]]*\[/ {in_rpc=0} in_rpc && /^[[:space:]]*laddr = "tcp:\/\// {gsub(/".*/, "", $NF); print $NF; exit}' "$CONFIG_FILE")
 
-if systemctl is-active --quiet "$GNOLAND_SERVICE_NAME" && [ "$RPC_NETWORK" = "$CHAIN_ID" ] && [ "$CONFIG_ABCI_PORT" = "$GNOLAND_ABCI_PORT" ] && [ "$CONFIG_P2P_PORT" = "$GNOLAND_P2P_PORT" ] && [ "$CONFIG_RPC_PORT" = "$GNOLAND_RPC_PORT" ]; then
+if systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME" && [ "$RPC_NETWORK" = "$CHAIN_ID" ] && [ "$CONFIG_ABCI_PORT" = "$GNOLAND_ABCI_PORT" ] && [ "$CONFIG_P2P_PORT" = "$GNOLAND_P2P_PORT" ] && [ "$CONFIG_RPC_PORT" = "$GNOLAND_RPC_PORT" ]; then
     echo -e "${GREEN}Gnoland service started successfully.${RESET}"
     echo "Verified RPC network: $RPC_NETWORK"
     echo "Verified local ports: ABCI $CONFIG_ABCI_PORT, P2P $CONFIG_P2P_PORT, RPC $CONFIG_RPC_PORT"
@@ -489,8 +489,8 @@ else
     echo "Observed RPC network: ${RPC_NETWORK:-unavailable}"
     echo "Expected local ports: ABCI $GNOLAND_ABCI_PORT, P2P $GNOLAND_P2P_PORT, RPC $GNOLAND_RPC_PORT"
     echo "Observed local ports: ABCI ${CONFIG_ABCI_PORT:-unavailable}, P2P ${CONFIG_P2P_PORT:-unavailable}, RPC ${CONFIG_RPC_PORT:-unavailable}"
-    sudo systemctl status "$GNOLAND_SERVICE_NAME" --no-pager -l || true
-    sudo journalctl -u "$GNOLAND_SERVICE_NAME" -n 100 --no-pager || true
+    sudo systemctl status "$GNOLAND_MAINNET_SERVICE_NAME" --no-pager -l || true
+    sudo journalctl -u "$GNOLAND_MAINNET_SERVICE_NAME" -n 100 --no-pager || true
     false
 fi
 

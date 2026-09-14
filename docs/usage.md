@@ -35,6 +35,15 @@ Option `1a` asks for the node moniker, a two-digit local port prefix, an optiona
 
 The release tag commit `9c8eb132e483d6fd324d92c193e629ad65a98a37` and source branch commit are recorded separately in `VERSIONS.json`. Installation replaces the Valley node data under the selected node home, so review the backup location and confirmation prompt before continuing.
 
+## Mainnet environment variables
+
+The runtime scripts use mainnet-scoped variables so a shared shell profile cannot accidentally select another network's node:
+
+- `GNOLAND_MAINNET_HOME`: node data directory; defaults to `$GNO_SOURCE_DIR/gnoland-data`.
+- `GNOLAND_MAINNET_SERVICE_NAME`: systemd service name without the `.service` suffix; defaults to `gnoland`.
+
+Unscoped legacy names are ignored. The service metadata remains `gnoland.service`, matching the default service selected by the installer.
+
 ## Menu options
 
 The menu numbering and startup flow remain stable:
