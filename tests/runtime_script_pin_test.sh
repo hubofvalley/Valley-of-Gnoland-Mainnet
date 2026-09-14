@@ -11,8 +11,8 @@ runtime_ref=$(sed -n 's/^readonly VALLEY_RUNTIME_REF="\([0-9a-f]\{40\}\)"$/\1/p'
 [ -n "$runtime_ref" ] || fail "VALLEY_RUNTIME_REF must be a full commit SHA"
 grep -Fq 'no verified remote pin' "$MAIN" || fail "missing remote-helper safety boundary"
 grep -Fq 'script_dir/../$relative_path' "$MAIN" || fail "main menu does not prefer checked-out helpers"
-grep -Fq 'Valley-of-Gnoland-Mainnet/cc025ffeff201bfa07791335935558923a9d32d0/${relative_path}' "$MAIN" || fail "main menu remote helper is not pinned"
-grep -Fq 'Valley-of-Gnoland-Mainnet/cc025ffeff201bfa07791335935558923a9d32d0/${NODE_DOCTOR_RELATIVE_PATH}' "$MAIN" || fail "doctor remote helper is not pinned"
+grep -Fq 'Valley-of-Gnoland-Mainnet/49f887478fbc1d83079cd5675c4c3eb51bdd459a/${relative_path}' "$MAIN" || fail "main menu remote helper is not pinned"
+grep -Fq 'Valley-of-Gnoland-Mainnet/49f887478fbc1d83079cd5675c4c3eb51bdd459a/${NODE_DOCTOR_RELATIVE_PATH}' "$MAIN" || fail "doctor remote helper is not pinned"
 if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$MAIN" "$DOCTOR"; then
     fail "stale endpoint or release wording remains in runtime scripts"
 fi

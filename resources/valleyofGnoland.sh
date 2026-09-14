@@ -19,7 +19,7 @@ readonly GNOLAND_BIN_SHA256="aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635
 readonly GNOKEY_BIN_SHA256="38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
-readonly VALLEY_RUNTIME_REF="cc025ffeff201bfa07791335935558923a9d32d0"
+readonly VALLEY_RUNTIME_REF="49f887478fbc1d83079cd5675c4c3eb51bdd459a"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
 
 run_node_doctor_script() {
@@ -37,7 +37,7 @@ run_node_doctor_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/cc025ffeff201bfa07791335935558923a9d32d0/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/49f887478fbc1d83079cd5675c4c3eb51bdd459a/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download the Node Doctor from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
@@ -240,7 +240,7 @@ run_repository_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/cc025ffeff201bfa07791335935558923a9d32d0/${relative_path}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/49f887478fbc1d83079cd5675c4c3eb51bdd459a/${relative_path}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download ${relative_path} from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
