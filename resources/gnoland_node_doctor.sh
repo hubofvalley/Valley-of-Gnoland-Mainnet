@@ -45,14 +45,14 @@ profile_value() {
 
 GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-$(profile_value GNO_SOURCE_DIR "$HOME/gno")}
 GNOLAND_DEPLOYMENT_DIR=${GNOLAND_DEPLOYMENT_DIR:-$(profile_value GNOLAND_DEPLOYMENT_DIR "$GNO_SOURCE_DIR/$EXPECTED_DEPLOYMENT_PATH")}
-GNOLAND_HOME=${GNOLAND_HOME:-$(profile_value GNOLAND_HOME "$GNO_SOURCE_DIR/gnoland-data")}
+GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$(profile_value GNOLAND_MAINNET_HOME "$GNO_SOURCE_DIR/gnoland-data")}
 GNOLAND_GENESIS=${GNOLAND_GENESIS:-$(profile_value GNOLAND_GENESIS "$GNOLAND_DEPLOYMENT_DIR/genesis.json")}
-GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME:-$(profile_value GNOLAND_SERVICE_NAME "gnoland")}
-GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME%.service}
+GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-$(profile_value GNOLAND_MAINNET_SERVICE_NAME "gnoland")}
+GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME%.service}
 GNOLAND_REMOTE=${GNOLAND_REMOTE:-$(profile_value GNOLAND_REMOTE "http://127.0.0.1:26657")}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
-CONFIG_FILE="$GNOLAND_HOME/config/config.toml"
+CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -124,7 +124,7 @@ else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi
 
-service_file=$(systemctl show "$GNOLAND_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+service_file=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
 if [ -n "$service_file" ] && [ -f "$service_file" ]; then
     if grep -Fq -- "--chainid $EXPECTED_CHAIN_ID" "$service_file" && \
         grep -Fq -- "--genesis $GNOLAND_GENESIS" "$service_file" && \
@@ -134,7 +134,7 @@ if [ -n "$service_file" ] && [ -f "$service_file" ]; then
         record FAIL service_chain "systemd unit does not contain the expected mainnet startup flags"
     fi
 else
-    record FAIL service "systemd unit for ${GNOLAND_SERVICE_NAME}.service was not found"
+    record FAIL service "systemd unit for ${GNOLAND_MAINNET_SERVICE_NAME}.service was not found"
 fi
 
 local_status=$(curl -m 5 -fsS "${GNOLAND_REMOTE%/}/status" 2>/dev/null || true)
@@ -162,8 +162,8 @@ if command -v timedatectl >/dev/null 2>&1; then
     [ "$ntp_state" = "yes" ] && record PASS time_sync "system clock reports NTP synchronized" || record WARN time_sync "NTP synchronization could not be confirmed"
 fi
 
-if [ -d "$GNOLAND_HOME" ]; then
-    free_kb=$(df -Pk "$GNOLAND_HOME" 2>/dev/null | awk 'NR==2 {print $4}')
+if [ -d "$GNOLAND_MAINNET_HOME" ]; then
+    free_kb=$(df -Pk "$GNOLAND_MAINNET_HOME" 2>/dev/null | awk 'NR==2 {print $4}')
     if [[ "$free_kb" =~ ^[0-9]+$ ]] && [ "$free_kb" -lt 20971520 ]; then
         record WARN disk "less than 20 GiB free on the node filesystem"
     else

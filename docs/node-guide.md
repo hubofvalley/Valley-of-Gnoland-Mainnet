@@ -69,6 +69,11 @@ keyring:           ~/.config/gno
 binaries:          ~/go/bin/gnoland and ~/go/bin/gnokey
 ```
 
+The mainnet scripts read `GNOLAND_MAINNET_HOME` for the node data directory and
+`GNOLAND_MAINNET_SERVICE_NAME` for the systemd service name. They default to
+`$HOME/gno/gnoland-data` and `gnoland`, respectively; the generated service is
+therefore `gnoland.service` unless the operator selects another valid name.
+
 The menu selects a two-digit prefix for local listeners. It keeps RPC and ABCI on loopback and binds P2P on `0.0.0.0`; the selected service file starts with:
 
 ```text

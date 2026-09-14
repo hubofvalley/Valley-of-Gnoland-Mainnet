@@ -44,6 +44,10 @@ For a local checkout, run:
 bash resources/valleyofGnoland.sh
 ```
 
+Mainnet-specific overrides are `GNOLAND_MAINNET_HOME` for the node data
+directory and `GNOLAND_MAINNET_SERVICE_NAME` for the systemd service name.
+Their defaults are `$GNO_SOURCE_DIR/gnoland-data` and `gnoland`.
+
 The read-only Node Doctor can run without entering the interactive menu:
 
 ```bash

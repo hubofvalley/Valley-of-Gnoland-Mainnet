@@ -5,6 +5,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 INSTALLER="$ROOT/resources/gnoland_node_install.sh"
 MAIN="$ROOT/resources/valleyofGnoland.sh"
 UPDATER="$ROOT/resources/gnoland_update.sh"
+DOCTOR="$ROOT/resources/gnoland_node_doctor.sh"
 SNAPSHOT="$ROOT/resources/apply_snapshot.sh"
 VERSIONS="$ROOT/VERSIONS.json"
 VALLEY="$ROOT/VALLEY.json"
@@ -13,6 +14,41 @@ fail() { echo "MAINNET_CONTRACT_TEST_FAIL: $*" >&2; exit 1; }
 
 [ -f "$INSTALLER" ] || fail "mainnet installer missing"
 [ -f "$VALLEY" ] || fail "VALLEY.json missing"
+
+# Mainnet runtime state must not consume the generic names shared by other
+# Gnoland networks. Construct the legacy names here so this regression test
+# can reject them without making them operational references.
+legacy_home_var='GNOLAND_'HOME
+legacy_service_var='GNOLAND_'SERVICE_NAME
+for legacy_var in "$legacy_home_var" "$legacy_service_var"; do
+    if grep -R -n -F -- "$legacy_var" "$ROOT/README.md" "$ROOT/VALLEY.json" "$ROOT/VERSIONS.json" "$ROOT/resources" "$ROOT/docs"; then
+        fail "legacy environment variable remains in runtime scripts or docs: $legacy_var"
+    fi
+done
+for script in "$MAIN" "$INSTALLER" "$UPDATER" "$DOCTOR"; do
+    grep -Fq 'GNOLAND_MAINNET_HOME' "$script" || fail "$script does not cover GNOLAND_MAINNET_HOME"
+    grep -Fq 'GNOLAND_MAINNET_SERVICE_NAME' "$script" || fail "$script does not cover GNOLAND_MAINNET_SERVICE_NAME"
+done
+grep -Fq 'GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-gnoland}' "$UPDATER" ||
+    fail "updater default service is not gnoland"
+grep -Fq 'GNOLAND_MAINNET_SERVICE_NAME=${INPUT_SVC:-gnoland}' "$MAIN" ||
+    fail "main launcher default service is not gnoland"
+grep -Fq 'profile_value GNOLAND_MAINNET_SERVICE_NAME "gnoland"' "$DOCTOR" ||
+    fail "Node Doctor default service is not gnoland"
+[ "$(jq -r '.services | join(",")' "$VALLEY")" = 'gnoland.service' ] ||
+    fail "VALLEY service metadata must remain gnoland.service"
+[ "$(jq -r '.components[0].service' "$VALLEY")" = 'gnoland.service' ] ||
+    fail "VALLEY component service metadata must remain gnoland.service"
+if grep -Fq "sed -i '/GNOLAND_/d" "$INSTALLER" "$MAIN"; then
+    fail "mainnet profile cleanup still deletes every GNOLAND_* export"
+fi
+for cleanup_file in "$INSTALLER" "$MAIN"; do
+    grep -Fq '^export GNOLAND_MAINNET_HOME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_HOME in ${cleanup_file#$ROOT/}"
+    grep -Fq '^export GNOLAND_MAINNET_SERVICE_NAME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_SERVICE_NAME in ${cleanup_file#$ROOT/}"
+    if grep -Fq 'GNOLAND_TESTNET_HOME' "$cleanup_file" || grep -Fq 'GNOLAND_TESTNET_SERVICE_NAME' "$cleanup_file"; then
+        fail "mainnet cleanup may delete testnet-scoped exports in ${cleanup_file#$ROOT/}"
+    fi
+done
 
 facts=(
     'gnoland-1'

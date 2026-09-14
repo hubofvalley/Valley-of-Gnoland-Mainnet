@@ -28,7 +28,7 @@ assert_contains "$menu_output" '1. Exit'
 mkdir -p "$TEST_TMP/gno/gnoland-data/db" "$TEST_TMP/gno/gnoland-data/wal"
 printf 'old-db\n' >"$TEST_TMP/gno/gnoland-data/db/marker"
 printf 'old-wal\n' >"$TEST_TMP/gno/gnoland-data/wal/marker"
-if HOME="$TEST_TMP" GNO_SOURCE_DIR="$TEST_TMP/gno" GNOLAND_HOME="$TEST_TMP/gno/gnoland-data" \
+if HOME="$TEST_TMP" GNO_SOURCE_DIR="$TEST_TMP/gno" GNOLAND_MAINNET_HOME="$TEST_TMP/gno/gnoland-data" \
     bash -c 'source "$1"; apply_snapshot' _ "$SNAPSHOT_SCRIPT" >/dev/null 2>&1; then
     fail "disabled snapshot path unexpectedly succeeded"
 fi

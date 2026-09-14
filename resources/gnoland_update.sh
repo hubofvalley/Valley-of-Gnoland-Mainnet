@@ -39,11 +39,11 @@ readonly GNOKEY_ASSET="gnokey_linux_amd64"
 readonly GNOKEY_ASSET_SHA256="38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
 readonly PUBLIC_RPC="https://rpc.gno.land"
 
-GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME:-gnoland}
-GNOLAND_SERVICE_NAME=${GNOLAND_SERVICE_NAME%.service}
+GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-gnoland}
+GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME%.service}
 GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-$HOME/gno}
 GNOLAND_DEPLOYMENT_DIR=${GNOLAND_DEPLOYMENT_DIR:-$GNO_SOURCE_DIR/misc/deployments/mainnet.gno.land}
-GNOLAND_HOME=${GNOLAND_HOME:-$GNO_SOURCE_DIR/gnoland-data}
+GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$GNO_SOURCE_DIR/gnoland-data}
 GNOLAND_GENESIS=${GNOLAND_GENESIS:-$GNOLAND_DEPLOYMENT_DIR/genesis.json}
 if [ "$(realpath -m "$GNOLAND_GENESIS")" != "$(realpath -m "$GNOLAND_DEPLOYMENT_DIR/genesis.json")" ]; then
     echo "Mainnet genesis must be stored under $GNOLAND_DEPLOYMENT_DIR." >&2
@@ -53,7 +53,7 @@ GNOROOT=${GNOROOT:-$GNO_SOURCE_DIR}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
 OS_USER=$(id -un)
-SERVICE_FILE=$(systemctl show "$GNOLAND_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+SERVICE_FILE=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
 
 if [ -n "${SUDO_USER:-}" ]; then
     echo "Run the updater as the node OS user, not with sudo." >&2
@@ -70,15 +70,15 @@ path_is_under_home() {
     esac
 }
 
-for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_HOME" "$GNOLAND_GENESIS" "$GNOLAND_BIN" "$GNOKEY_BIN"; do
+for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOLAND_GENESIS" "$GNOLAND_BIN" "$GNOKEY_BIN"; do
     if ! path_is_under_home "$instance_path"; then
         echo "Unsafe instance path outside $HOME: $instance_path" >&2
         exit 1
     fi
 done
 
-if [[ ! "$GNOLAND_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]]; then
-    echo "Invalid Gnoland service name: $GNOLAND_SERVICE_NAME" >&2
+if [[ ! "$GNOLAND_MAINNET_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]]; then
+    echo "Invalid Gnoland service name: $GNOLAND_MAINNET_SERVICE_NAME" >&2
     exit 1
 fi
 
@@ -90,7 +90,7 @@ if [ -n "$SERVICE_FILE" ]; then
     UNIT_USER=$(sed -n 's/^User=//p' "$SERVICE_FILE" | tail -n 1)
     UNIT_WORKDIR=$(sed -n 's/^WorkingDirectory=//p' "$SERVICE_FILE" | tail -n 1)
     if [ "$UNIT_USER" != "$OS_USER" ] || [ "$UNIT_WORKDIR" != "$GNO_SOURCE_DIR" ]; then
-        echo "$GNOLAND_SERVICE_NAME.service belongs to another instance." >&2
+        echo "$GNOLAND_MAINNET_SERVICE_NAME.service belongs to another instance." >&2
         exit 1
     fi
     if ! grep -Fq -- "--chainid $CHAIN_ID" "$SERVICE_FILE"; then
@@ -179,7 +179,7 @@ fi
 CURRENT_STAGE="install verified mainnet binaries"
 mkdir -p "$(dirname "$GNOLAND_BIN")" "$(dirname "$GNOKEY_BIN")"
 if [ -n "$SERVICE_FILE" ]; then
-    sudo systemctl stop "$GNOLAND_SERVICE_NAME"
+    sudo systemctl stop "$GNOLAND_MAINNET_SERVICE_NAME"
 fi
 install -m 0755 "$TMP_DIR/gnoland" "$GNOLAND_BIN"
 install -m 0755 "$TMP_DIR/gnokey" "$GNOKEY_BIN"
@@ -191,10 +191,10 @@ printf '%s  %s\n' "$GNOLAND_ASSET_SHA256" "$GNOLAND_BIN" | sha256sum --check - >
 printf '%s  %s\n' "$GNOKEY_ASSET_SHA256" "$GNOKEY_BIN" | sha256sum --check - >/dev/null
 
 # Keep the runtime profile aligned with the checked-out mainnet deployment.
-sed -i '/^export GNOLAND_CHAIN_ID=/d;/^export GNOLAND_HOME=/d;/^export GNOLAND_DEPLOYMENT_DIR=/d;/^export GNOLAND_GENESIS=/d;/^export GNOKEY_HOME=/d;/^export GNO_SOURCE_DIR=/d;/^export GNOROOT=/d;/^export GNOLAND_PUBLIC_REMOTE=/d;/go\/bin/d' "$HOME/.bash_profile" 2>/dev/null || true
+sed -i '/^export GNOLAND_CHAIN_ID=/d;/^export GNOLAND_MAINNET_HOME=/d;/^export GNOLAND_DEPLOYMENT_DIR=/d;/^export GNOLAND_GENESIS=/d;/^export GNOKEY_HOME=/d;/^export GNO_SOURCE_DIR=/d;/^export GNOROOT=/d;/^export GNOLAND_PUBLIC_REMOTE=/d;/go\/bin/d' "$HOME/.bash_profile" 2>/dev/null || true
 {
     echo "export GNOLAND_CHAIN_ID=\"$CHAIN_ID\""
-    echo "export GNOLAND_HOME=\"$GNOLAND_HOME\""
+    echo "export GNOLAND_MAINNET_HOME=\"$GNOLAND_MAINNET_HOME\""
     echo "export GNOLAND_DEPLOYMENT_DIR=\"$GNOLAND_DEPLOYMENT_DIR\""
     echo "export GNOLAND_GENESIS=\"$GNOLAND_GENESIS\""
     echo "export GNO_SOURCE_DIR=\"$GNO_SOURCE_DIR\""
@@ -213,8 +213,8 @@ fi
 if [ -n "$SERVICE_FILE" ]; then
     sudo systemctl daemon-reload
     CURRENT_STAGE="restart gnoland-1 service"
-    sudo systemctl restart "$GNOLAND_SERVICE_NAME"
-    sudo systemctl status "$GNOLAND_SERVICE_NAME" --no-pager -l || true
+    sudo systemctl restart "$GNOLAND_MAINNET_SERVICE_NAME"
+    sudo systemctl status "$GNOLAND_MAINNET_SERVICE_NAME" --no-pager -l || true
 else
     echo "No existing service was found; verified binaries and genesis were installed only."
 fi
