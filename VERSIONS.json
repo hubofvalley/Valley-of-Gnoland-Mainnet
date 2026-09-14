@@ -1,0 +1,53 @@
+{
+  "project": "Valley of Gnoland - Mainnet",
+  "network": "Gno.land mainnet",
+  "chain_id": "gnoland-1",
+  "release_tag": "chain/mainnet",
+  "release_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+  "release_tag_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+  "genesis_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+  "release_url": "https://github.com/gnolang/gno/releases/tag/chain/mainnet",
+  "source_branch": "chain/mainnet",
+  "source_commit": "31b6650a100d9baf14e7669f8f0df924f1f841e0",
+  "source_branch_commit": "31b6650a100d9baf14e7669f8f0df924f1f841e0",
+  "source_url": "https://github.com/gnolang/gno/tree/chain/mainnet",
+  "deployment_path": "misc/deployments/mainnet.gno.land/",
+  "source_repository": "https://github.com/gnolang/gno.git",
+  "genesis": {
+    "path": "misc/deployments/mainnet.gno.land/genesis.json",
+    "url": "https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json",
+    "sha256": "ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
+  },
+  "prebuilt_assets": true,
+  "binary_assets": {
+    "base_url": "https://github.com/gnolang/gno/releases/download/chain/mainnet",
+    "platform": "linux_amd64",
+    "gnoland": {
+      "asset": "gnoland_linux_amd64",
+      "sha256": "aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28"
+    },
+    "gnokey": {
+      "asset": "gnokey_linux_amd64",
+      "sha256": "38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
+    }
+  },
+  "endpoints": {
+    "web": "https://gno.land",
+    "rpc": "https://rpc.gno.land",
+    "comparison_rpc": "https://rpc.gno.land",
+    "faucet": null,
+    "official_persistent_peers": "g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656",
+    "active_validator_realm": "r/sys/validators/v0"
+  },
+  "snapshot": {
+    "status": "disabled",
+    "reason": "No verified gnoland-1 snapshot provider is configured",
+    "script": "resources/apply_snapshot.sh"
+  },
+  "candidate_registration": {
+    "status": "disabled",
+    "reason": "No verified mainnet funding route, gas specification, or transaction procedure is configured; no faucet exists."
+  },
+  "verification_status": "verified_facts_only",
+  "last_reviewed": "2026-09-14"
+}

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "project": "Valley of Gnoland",
+  "network": "Gno.land mainnet",
+  "chain_id": "gnoland-1",
+  "architecture": "v1",
+  "visibility": "public",
+  "public_launcher": "direct",
+  "default_branch": "main",
+  "entrypoint": "resources/valleyofGnoland.sh",
+  "services": ["gnoland.service"],
+  "components": [
+    {
+      "id": "gnoland",
+      "kind": "single Cosmos/CometBFT-style Gno service",
+      "service": "gnoland.service",
+      "capabilities": [
+        "verified_release_install",
+        "verified_release_update",
+        "node_status",
+        "peer_config",
+        "key_management",
+        "read_only_diagnostics"
+      ],
+      "ports": [
+        { "role": "p2p", "default": "26656", "exposure": "public" },
+        { "role": "rpc", "default": "26657", "exposure": "loopback" },
+        { "role": "abci", "default": "26658", "exposure": "loopback" }
+      ],
+      "paths": {
+        "source": "$HOME/gno",
+        "deployment": "$HOME/gno/misc/deployments/mainnet.gno.land",
+        "node_home": "$HOME/gno/gnoland-data",
+        "keyring": "$HOME/.config/gno",
+        "binaries": "$HOME/go/bin"
+      }
+    }
+  ],
+  "release": {
+    "tag": "chain/mainnet",
+    "commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+    "tag_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+    "genesis_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+    "source_branch": "chain/mainnet",
+    "source_commit": "31b6650a100d9baf14e7669f8f0df924f1f841e0",
+    "deployment_path": "misc/deployments/mainnet.gno.land/",
+    "genesis_sha256": "ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0",
+    "source_repository": "https://github.com/gnolang/gno.git"
+  },
+  "install": {
+    "mode": "verified_release_assets",
+    "prebuilt_assets": true,
+    "platform": "linux_amd64",
+    "asset_base_url": "https://github.com/gnolang/gno/releases/download/chain/mainnet",
+    "assets": {
+      "gnoland": "gnoland_linux_amd64",
+      "gnokey": "gnokey_linux_amd64"
+    },
+    "binary_sha256": {
+      "gnoland": "aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28",
+      "gnokey": "38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
+    }
+  },
+  "genesis": {
+    "path": "misc/deployments/mainnet.gno.land/genesis.json",
+    "url": "https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json",
+    "sha256": "ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
+  },
+  "snapshot": {
+    "status": "disabled",
+    "provider": null,
+    "requires": "a provider independently verified for gnoland-1"
+  },
+  "endpoints": {
+    "web": "https://gno.land",
+    "rpc": "https://rpc.gno.land",
+    "comparison_rpc": "https://rpc.gno.land",
+    "faucet": null,
+    "official_persistent_peers": "g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656",
+    "active_validator_realm": "r/sys/validators/v0"
+  },
+  "candidate_registration": {
+    "status": "disabled",
+    "active_realm": "r/sys/validators/v0",
+    "reason": "No verified mainnet funding route, gas specification, or transaction procedure is configured; no faucet exists."
+  },
+  "exposure_rules": {
+    "p2p": "public when required for peer connectivity",
+    "rpc": "loopback by default",
+    "abci": "loopback by default"
+  }
+}
