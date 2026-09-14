@@ -39,6 +39,16 @@ grep -Fq 'profile_value GNOLAND_MAINNET_SERVICE_NAME "gnoland"' "$DOCTOR" ||
     fail "VALLEY service metadata must remain gnoland.service"
 [ "$(jq -r '.components[0].service' "$VALLEY")" = 'gnoland.service' ] ||
     fail "VALLEY component service metadata must remain gnoland.service"
+if grep -Fq "sed -i '/GNOLAND_/d" "$INSTALLER" "$MAIN"; then
+    fail "mainnet profile cleanup still deletes every GNOLAND_* export"
+fi
+for cleanup_file in "$INSTALLER" "$MAIN"; do
+    grep -Fq '^export GNOLAND_MAINNET_HOME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_HOME in ${cleanup_file#$ROOT/}"
+    grep -Fq '^export GNOLAND_MAINNET_SERVICE_NAME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_SERVICE_NAME in ${cleanup_file#$ROOT/}"
+    if grep -Fq 'GNOLAND_TESTNET_HOME' "$cleanup_file" || grep -Fq 'GNOLAND_TESTNET_SERVICE_NAME' "$cleanup_file"; then
+        fail "mainnet cleanup may delete testnet-scoped exports in ${cleanup_file#$ROOT/}"
+    fi
+done
 
 facts=(
     'gnoland-1'
