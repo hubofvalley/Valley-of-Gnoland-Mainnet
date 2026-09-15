@@ -47,6 +47,9 @@ jobs:
       - name: Run mainnet Node Doctor regression test
         run: bash tests/node_doctor_test.sh
 
+      - name: Run release identity regression test
+        run: bash tests/release_identity_test.sh
+
       - name: Run snapshot fail-closed regression test
         run: bash tests/apply_snapshot_test.sh
 

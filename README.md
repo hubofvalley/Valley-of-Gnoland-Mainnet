@@ -56,6 +56,30 @@ bash resources/valleyofGnoland.sh doctor --json
 bash resources/valleyofGnoland.sh doctor --strict
 ```
 
+### Coordinated-upgrade release identity preflight
+
+This repository also ships a read-only release-identity check for reviewing a
+`gnoland` binary before it is considered for a coordinated upgrade:
+
+```bash
+bash resources/check_release_identity.sh --binary "$HOME/go/bin/gnoland"
+bash resources/check_release_identity.sh --binary /path/to/candidate/gnoland --expect vX.Y.Z
+```
+
+The check reads the binary's own `gnoland version` output. It blocks binaries
+that report `develop`, and it can require an exact reviewed version with
+`--expect`. An `IDENTIFIED` result only proves that the artifact exposes the
+expected release identity; it does **not** prove consensus compatibility or
+replace the network's reviewed halt/restart procedure.
+
+This distinction matters for the launch artifact currently pinned here.
+Upstream [gnolang/gno#6177](https://github.com/gnolang/gno/pull/6177) reports
+that the published `chain/mainnet` `gnoland` binary identifies itself as
+`develop`. The current update command therefore remains a pinned launch-release
+refresh, not a generic coordinated-upgrade executor. Do not repoint its release
+constants at a consensus-changing release without a separately reviewed upgrade
+procedure and release artifact.
+
 Read [docs/usage.md](docs/usage.md) before using the install, update, service, or key-management options.
 
 ## Install and verification policy
@@ -75,6 +99,7 @@ The branch commit and release tag commit are kept separate deliberately. The rel
 - Mainnet deployment path and official persistent peer configuration.
 - Isolated service ownership checks, port-prefix selection, status, logs, and key management.
 - Read-only Node Doctor with human and JSON output.
+- Read-only release-identity preflight for coordinated-upgrade review.
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
 - Disabled candidate registration with an explicit no-faucet and funding/procedure warning.
 
