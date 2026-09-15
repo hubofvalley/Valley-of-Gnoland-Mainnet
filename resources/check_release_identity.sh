@@ -7,7 +7,7 @@ JSON_MODE=false
 
 usage() {
     cat <<'EOF'
-Baconvalley Gnoland release identity preflight
+Gnoland release identity preflight
 
 Usage:
   check_release_identity.sh [--binary PATH] [--expect VERSION] [--json]
