@@ -58,7 +58,7 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 ### Coordinated-upgrade release identity preflight
 
-Baconvalley also ships a read-only release-identity check for reviewing a
+This repository also ships a read-only release-identity check for reviewing a
 `gnoland` binary before it is considered for a coordinated upgrade:
 
 ```bash
