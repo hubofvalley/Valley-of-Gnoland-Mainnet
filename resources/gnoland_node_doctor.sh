@@ -152,10 +152,10 @@ fi
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
     case "$local_catching_up" in
         false)
-            record PASS local_sync "local node is caught up at height ${local_height:-unknown}"
+            record PASS local_sync "local RPC reports catching_up=false at height ${local_height:-unknown}"
             ;;
         true)
-            record WARN local_sync "local node is still catching up at height ${local_height:-unknown}"
+            record WARN local_sync "local RPC reports catching_up=true at height ${local_height:-unknown}"
             ;;
         *)
             record WARN local_sync "local RPC did not expose a valid catching_up state"
