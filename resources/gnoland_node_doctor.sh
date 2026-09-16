@@ -21,7 +21,7 @@ if [ -n "${GNOLAND_NODE_DOCTOR_REF:-}" ] && [[ ! "${GNOLAND_NODE_DOCTOR_REF}" =~
 fi
 
 if [ "${1:-}" = "--version" ]; then
-    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.0.0"
+    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.1.0"
     exit 0
 fi
 
@@ -139,12 +139,40 @@ fi
 
 local_status=$(curl -m 5 -fsS "${GNOLAND_REMOTE%/}/status" 2>/dev/null || true)
 local_network=$(printf '%s' "$local_status" | jq -r '.result.node_info.network // empty' 2>/dev/null || true)
+local_height=$(printf '%s' "$local_status" | jq -r '.result.sync_info.latest_block_height // empty' 2>/dev/null || true)
+local_catching_up=$(printf '%s' "$local_status" | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null || true)
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
     record PASS local_rpc "local RPC reports $EXPECTED_CHAIN_ID"
 elif [ -n "$local_network" ]; then
     record FAIL local_rpc "local RPC reports $local_network, expected $EXPECTED_CHAIN_ID"
 else
     record WARN local_rpc "local RPC is not reachable at $GNOLAND_REMOTE"
+fi
+
+if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
+    case "$local_catching_up" in
+        false)
+            record PASS local_sync "local node is caught up at height ${local_height:-unknown}"
+            ;;
+        true)
+            record WARN local_sync "local node is still catching up at height ${local_height:-unknown}"
+            ;;
+        *)
+            record WARN local_sync "local RPC did not expose a valid catching_up state"
+            ;;
+    esac
+fi
+
+local_net_info=$(curl -m 5 -fsS "${GNOLAND_REMOTE%/}/net_info" 2>/dev/null || true)
+local_peer_count=$(printf '%s' "$local_net_info" | jq -r '.result.n_peers // empty' 2>/dev/null || true)
+if [[ "$local_peer_count" =~ ^[0-9]+$ ]]; then
+    if [ "$local_peer_count" -gt 0 ]; then
+        record PASS live_peers "local node reports $local_peer_count live peer(s)"
+    else
+        record WARN live_peers "local node reports zero live peers"
+    fi
+else
+    record WARN live_peers "local live peer count is unavailable from $GNOLAND_REMOTE/net_info"
 fi
 
 public_status=$(curl -m 5 -fsS "$PUBLIC_RPC/status" 2>/dev/null || true)
