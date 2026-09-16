@@ -7,7 +7,7 @@ DOCTOR="$ROOT/resources/gnoland_node_doctor.sh"
 fail() { echo "NODE_DOCTOR_TEST_FAIL: $*" >&2; exit 1; }
 
 version=$(bash "$DOCTOR" --version)
-[ "$version" = 'Valley of Gnoland Node Doctor (gnoland-1) 1.0.0' ] || fail "unexpected version output"
+[ "$version" = 'Valley of Gnoland Node Doctor (gnoland-1) 1.1.0' ] || fail "unexpected version output"
 
 set +e
 GNOLAND_NODE_DOCTOR_REF=main bash "$DOCTOR" --version >/dev/null 2>&1
@@ -25,6 +25,11 @@ grep -Fq 'EXPECTED_GNOKEY_SHA256="38018492bcaa4de2f146d0566daf6507d9e811ee28547b
 grep -Fq 'EXPECTED_PERSISTENT_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"' "$DOCTOR" || fail "official peer guard missing"
 grep -Fq 'ACTIVE_VALIDATOR_REALM="r/sys/validators/v0"' "$DOCTOR" || fail "active realm guard missing"
 grep -Fq 'PUBLIC_RPC="https://rpc.gno.land"' "$DOCTOR" || fail "public RPC guard missing"
+grep -Fq '.result.sync_info.latest_block_height // empty' "$DOCTOR" || fail "latest block height visibility missing"
+grep -Fq '.result.sync_info.catching_up // empty' "$DOCTOR" || fail "catching_up visibility missing"
+grep -Fq '"${GNOLAND_REMOTE%/}/net_info"' "$DOCTOR" || fail "live peer RPC probe missing"
+grep -Fq '.result.n_peers // empty' "$DOCTOR" || fail "live peer count parsing missing"
+grep -Fq 'local node reports zero live peers' "$DOCTOR" || fail "zero-peer warning missing"
 if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$DOCTOR"; then
     fail "stale endpoint or release wording remains in Node Doctor"
 fi
