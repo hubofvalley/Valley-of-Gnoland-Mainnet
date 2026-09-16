@@ -27,6 +27,11 @@ grep -Fq 'ACTIVE_VALIDATOR_REALM="r/sys/validators/v0"' "$DOCTOR" || fail "activ
 grep -Fq 'PUBLIC_RPC="https://rpc.gno.land"' "$DOCTOR" || fail "public RPC guard missing"
 grep -Fq '.result.sync_info.latest_block_height // empty' "$DOCTOR" || fail "latest block height visibility missing"
 grep -Fq '.result.sync_info.catching_up // empty' "$DOCTOR" || fail "catching_up visibility missing"
+grep -Fq 'local RPC reports catching_up=false at height' "$DOCTOR" || fail "catching_up=false report missing"
+grep -Fq 'local RPC reports catching_up=true at height' "$DOCTOR" || fail "catching_up=true report missing"
+if grep -Fq 'local node is caught up' "$DOCTOR"; then
+    fail "catching_up=false must not be presented as proof of network-head sync"
+fi
 grep -Fq '"${GNOLAND_REMOTE%/}/net_info"' "$DOCTOR" || fail "live peer RPC probe missing"
 grep -Fq '.result.n_peers // empty' "$DOCTOR" || fail "live peer count parsing missing"
 grep -Fq 'local node reports zero live peers' "$DOCTOR" || fail "zero-peer warning missing"
