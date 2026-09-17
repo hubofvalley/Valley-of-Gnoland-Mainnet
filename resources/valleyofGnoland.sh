@@ -23,7 +23,7 @@ readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
 readonly VALOPER_GAS_FEE="1000000ugnot"
 readonly VALOPER_GAS_WANTED=50000000
-readonly VALLEY_RUNTIME_REF="ff364b7e69ab27be08ddc179860e87f135cae8da"
+readonly VALLEY_RUNTIME_REF="84955d3046ff7880b0c0525bd58b303f86f70243"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
 
 run_node_doctor_script() {
@@ -41,7 +41,7 @@ run_node_doctor_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/ff364b7e69ab27be08ddc179860e87f135cae8da/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/84955d3046ff7880b0c0525bd58b303f86f70243/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download the Node Doctor from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
@@ -247,7 +247,7 @@ run_repository_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/ff364b7e69ab27be08ddc179860e87f135cae8da/${relative_path}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/84955d3046ff7880b0c0525bd58b303f86f70243/${relative_path}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download ${relative_path} from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
