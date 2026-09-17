@@ -114,5 +114,9 @@ fi
 for option in '1a' '1b' '1c' '1d' '1e' '1f' '1g' '2a' '2b' '2c' '2d' '3a' '3b' '3c' '3d'; do
     grep -Fq "$option" "$MAIN" || fail "menu option $option is missing"
 done
+grep -Fq "1b. Update Gnoland/Gnokey from Pinned Mainnet Release (\${GNOLAND_RELEASE_COMMIT:0:12})" "$MAIN" ||
+    fail "1b menu entry does not surface the pinned release commit"
+grep -Fq "Target release commit: \${GNOLAND_RELEASE_COMMIT}" "$MAIN" ||
+    fail "update confirmation does not surface the full pinned release commit"
 
 printf '%s\n' 'MAINNET_CONTRACT_TEST_OK'
