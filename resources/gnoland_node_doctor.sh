@@ -21,7 +21,7 @@ if [ -n "${GNOLAND_NODE_DOCTOR_REF:-}" ] && [[ ! "${GNOLAND_NODE_DOCTOR_REF}" =~
 fi
 
 if [ "${1:-}" = "--version" ]; then
-    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.1.0"
+    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.2.0"
     exit 0
 fi
 
@@ -177,12 +177,29 @@ fi
 
 public_status=$(curl -m 5 -fsS "$PUBLIC_RPC/status" 2>/dev/null || true)
 public_network=$(printf '%s' "$public_status" | jq -r '.result.node_info.network // empty' 2>/dev/null || true)
+public_height=$(printf '%s' "$public_status" | jq -r '.result.sync_info.latest_block_height // empty' 2>/dev/null || true)
 if [ "$public_network" = "$EXPECTED_CHAIN_ID" ]; then
     record PASS public_rpc "official comparison RPC reports $EXPECTED_CHAIN_ID"
 elif [ -n "$public_network" ]; then
     record WARN public_rpc "official comparison RPC reports $public_network"
 else
     record WARN public_rpc "official comparison RPC was unavailable"
+fi
+
+if [ "$local_network" = "$EXPECTED_CHAIN_ID" ] && [ "$public_network" = "$EXPECTED_CHAIN_ID" ]; then
+    if [[ "$local_height" =~ ^[0-9]+$ ]] && [[ "$public_height" =~ ^[0-9]+$ ]]; then
+        local_height_num=$((10#$local_height))
+        public_height_num=$((10#$public_height))
+        if [ "$public_height_num" -ge "$local_height_num" ]; then
+            height_gap=$((public_height_num - local_height_num))
+            record PASS height_gap "comparison RPC is $height_gap block(s) ahead of local node (local $local_height, comparison $public_height); observation only, no healthy-gap threshold is asserted"
+        else
+            height_gap=$((local_height_num - public_height_num))
+            record PASS height_gap "local node is $height_gap block(s) ahead of comparison RPC (local $local_height, comparison $public_height); observation only, no healthy-gap threshold is asserted"
+        fi
+    else
+        record WARN height_gap "local/comparison heights could not be compared; no healthy-gap threshold is asserted"
+    fi
 fi
 
 if command -v timedatectl >/dev/null 2>&1; then
