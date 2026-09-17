@@ -24,16 +24,20 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 Option `1a` asks for the node moniker, a two-digit local port prefix, an optional public P2P host, firewall preference, service name, and operator-key choice. It then:
 
-1. backs up existing node secrets and the local keyring when present;
-2. checks the selected service belongs to the current OS-user instance;
-3. fetches `chain/mainnet` and checks out source commit `31b6650a100d9baf14e7669f8f0df924f1f841e0`;
-4. downloads the official Linux amd64 `gnoland` and `gnokey` assets and verifies their hashes;
-5. downloads the official mainnet genesis into `misc/deployments/mainnet.gno.land/` and verifies its SHA-256;
-6. creates the node configuration and fresh node secrets;
+1. checks the selected service belongs to the current OS-user instance;
+2. checks upstream release metadata for drift against the reviewed Valley pins;
+3. stages the exact source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`, Linux amd64 `gnoland`/`gnokey`, and compressed genesis without stopping the live node;
+4. verifies binary hashes, binary-reported identity, compressed-genesis hash, and final genesis hash before cutover;
+5. asks whether to create a persistent secrets/keyring backup; choosing no does not block installation;
+6. for an existing Valley mainnet node, temporarily retains the previous runtime and preserves the existing validator/node `secrets/` directory exactly while rebuilding node data/config;
 7. configures both official persistent peers and the selected local ports; and
-8. starts the service only after the local RPC reports `gnoland-1`.
+8. starts the service and commits the cutover only after the local RPC reports `gnoland-1`. A failed startup gate triggers restoration of the previous runtime.
 
-The release tag commit `9c8eb132e483d6fd324d92c193e629ad65a98a37` and source branch commit are recorded separately in `VERSIONS.json`. Installation replaces the Valley node data under the selected node home, so review the backup location and confirmation prompt before continuing.
+The release tag commit `9c8eb132e483d6fd324d92c193e629ad65a98a37` and reviewed source commit are recorded separately in `VERSIONS.json`. Installation replaces the Valley node database/config under the selected node home. A persistent backup is optional, but validator/node secrets are preserved on a recognized safe reinstall regardless of that choice.
+
+## Safe update behavior
+
+Option `1b` first compares installed source, genesis, and binary hashes to the reviewed target. If everything already matches, it exits with `Already up to date` and does not restart the service. Otherwise it stages the exact source commit, release binaries, and compressed genesis before cutover. An active `gnoland` service is stopped only when `gnoland` or its `GNOROOT` source actually changes. After restart, Valley waits for local RPC to report `gnoland-1`; a failed health gate restores the previous source and binaries. If only `gnokey` changes, the node is left running.
 
 ## Mainnet environment variables
 
@@ -50,8 +54,8 @@ The menu numbering and startup flow remain stable:
 
 | Option | Behaviour |
 |---|---|
-| `1a` | Install or re-install the pinned mainnet node with verified release assets. |
-| `1b` | Update an existing mainnet service with the pinned source and verified release assets. |
+| `1a` | Stage and safely install/re-install the reviewed mainnet runtime; persistent backup is optional and existing validator/node secrets are preserved. |
+| `1b` | Compare, stage, verify and transactionally update the reviewed source/binaries with no-op detection, health gate and rollback. |
 | `1c` | Fail closed; no verified `gnoland-1` snapshot provider is configured. |
 | `1d` | Add peers manually or restore both official persistent peers. |
 | `1e` | Show local RPC, height, sync, peer, service, and disk status. |
@@ -73,6 +77,10 @@ The menu numbering and startup flow remain stable:
 
 - Run as the node OS user, not with `sudo bash`.
 - Review the source branch, release tag metadata, genesis checksum, binary hashes, and service path before installation or update.
+- Upstream `chain/mainnet` branch movement is informational; runtime scripts fetch the exact reviewed source commit rather than requiring that commit to remain the branch tip.
+- The current `chain/mainnet` release is checked for asset-digest drift before a cutover. A digest mismatch blocks install/update before service changes.
+- Valley stores its shell exports in a marked `GRAND VALLEY GNOLAND MAINNET` block and does not delete unrelated shell-profile lines containing `go/bin`.
+- UFW is never enabled from a hard-coded SSH port: the installer detects or asks for the SSH port, previews the rules, and requires `ENABLE-UFW` before activation.
 - RPC and ABCI listeners default to loopback; only the P2P listener is configured for public binding by default.
 - Never paste mnemonics or node secrets into chat or logs.
 - The key-management menu does not prove validator status. Option `2c` is a separate transaction flow and always shows the exact registration call before asking for broadcast confirmation.
