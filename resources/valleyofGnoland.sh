@@ -11,12 +11,13 @@ RESET='\033[0m'
 readonly GNOLAND_CHAIN_ID_DEFAULT="gnoland-1"
 readonly GNOLAND_PUBLIC_RPC_DEFAULT="https://rpc.gno.land"
 readonly GNOLAND_SOURCE_BRANCH="chain/mainnet"
-readonly GNOLAND_SOURCE_COMMIT="31b6650a100d9baf14e7669f8f0df924f1f841e0"
+readonly GNOLAND_SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"
 readonly GNOLAND_RELEASE_TAG="chain/mainnet"
 readonly GNOLAND_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
+readonly GNOLAND_ASSET_VERSION="chain/mainnet.3435+139a63fe6"
 readonly GNOLAND_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly GNOLAND_BIN_SHA256="aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28"
-readonly GNOKEY_BIN_SHA256="38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
+readonly GNOLAND_BIN_SHA256="ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3"
+readonly GNOKEY_BIN_SHA256="86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
@@ -153,6 +154,7 @@ ${GREEN}Gno.land gnoland-1 Node${RESET}
 - network: ${CYAN}gnoland-1${RESET}
 - source branch: ${CYAN}${GNOLAND_SOURCE_BRANCH}${RESET} @ ${CYAN}${GNOLAND_SOURCE_COMMIT}${RESET}
 - release tag: ${CYAN}${GNOLAND_RELEASE_TAG}${RESET} @ ${CYAN}${GNOLAND_RELEASE_COMMIT}${RESET}
+- asset version: ${CYAN}${GNOLAND_ASSET_VERSION}${RESET}
 - source directory: ${CYAN}${GNO_SOURCE_DIR}${RESET}
 - mainnet deployment: ${CYAN}${GNOLAND_DEPLOYMENT_DIR}${RESET}
 - node directory: ${CYAN}${GNOLAND_MAINNET_HOME}${RESET}
@@ -367,7 +369,8 @@ function deploy_gnoland_node() {
 
 function update_gnoland_binary() {
     echo -e "${YELLOW}Update gnoland and gnokey from the pinned ${GNOLAND_SOURCE_BRANCH} source and verified release assets.${RESET}"
-    echo -e "${YELLOW}Target release commit: ${GNOLAND_RELEASE_COMMIT}${RESET}"
+    echo -e "${YELLOW}Target source commit: ${GNOLAND_SOURCE_COMMIT}${RESET}"
+    echo -e "${YELLOW}Target asset version: ${GNOLAND_ASSET_VERSION}${RESET}"
     if ! prompt_back_or_continue; then
         return
     fi
@@ -869,7 +872,7 @@ function menu() {
     echo
     echo "1. Node Interactions"
     echo "   1a. Deploy/Re-deploy Gnoland Node"
-    echo "   1b. Update Gnoland/Gnokey from Pinned Mainnet Release (${GNOLAND_RELEASE_COMMIT:0:12})"
+    echo "   1b. Update Gnoland/Gnokey from Pinned Mainnet Assets (${GNOLAND_ASSET_VERSION})"
     echo "   1c. Apply Snapshot"
     echo "   1d. Add/Reset Peers"
     echo "   1e. Show Node Status"

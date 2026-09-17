@@ -53,12 +53,12 @@ done
 facts=(
     'gnoland-1'
     'chain/mainnet'
-    '31b6650a100d9baf14e7669f8f0df924f1f841e0'
+    '00417a1be97b9a311d9669ae7aa9585b277ee594'
     '9c8eb132e483d6fd324d92c193e629ad65a98a37'
     'misc/deployments/mainnet.gno.land/'
     'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0'
-    'aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28'
-    '38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511'
+    'ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3'
+    '86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14'
     'https://rpc.gno.land'
     'https://gno.land'
     'g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656'
@@ -72,7 +72,7 @@ done
 
 for script in "$INSTALLER" "$UPDATER"; do
     grep -Fq 'SOURCE_BRANCH="chain/mainnet"' "$script" || fail "$script does not pin the mainnet source branch"
-    grep -Fq 'SOURCE_COMMIT="31b6650a100d9baf14e7669f8f0df924f1f841e0"' "$script" || fail "$script does not pin the mainnet source commit"
+    grep -Fq 'SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"' "$script" || fail "$script does not pin the mainnet source commit"
     grep -Fq 'RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"' "$script" || fail "$script does not retain release tag metadata"
     grep -Fq 'download_verified_asset' "$script" || fail "$script does not verify downloaded binary assets"
     grep -Fq 'GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"' "$script" || fail "$script does not verify the official mainnet genesis"
@@ -93,11 +93,15 @@ fi
 [ "$(jq -r '.chain_id' "$VERSIONS")" = 'gnoland-1' ] || fail "VERSIONS chain_id is wrong"
 [ "$(jq -r '.release_tag' "$VERSIONS")" = 'chain/mainnet' ] || fail "VERSIONS release tag is wrong"
 [ "$(jq -r '.release_commit' "$VERSIONS")" = '9c8eb132e483d6fd324d92c193e629ad65a98a37' ] || fail "VERSIONS release commit is wrong"
+[ "$(jq -r '.versioned_release_tag' "$VERSIONS")" = 'v1.2.0' ] || fail "VERSIONS versioned release tag is wrong"
+[ "$(jq -r '.versioned_release_commit' "$VERSIONS")" = '9c8eb132e483d6fd324d92c193e629ad65a98a37' ] || fail "VERSIONS versioned release commit is wrong"
 [ "$(jq -r '.source_branch' "$VERSIONS")" = 'chain/mainnet' ] || fail "VERSIONS source branch is wrong"
-[ "$(jq -r '.source_commit' "$VERSIONS")" = '31b6650a100d9baf14e7669f8f0df924f1f841e0' ] || fail "VERSIONS source commit is wrong"
+[ "$(jq -r '.source_commit' "$VERSIONS")" = '00417a1be97b9a311d9669ae7aa9585b277ee594' ] || fail "VERSIONS source commit is wrong"
 [ "$(jq -r '.deployment_path' "$VERSIONS")" = 'misc/deployments/mainnet.gno.land/' ] || fail "VERSIONS deployment path is wrong"
-[ "$(jq -r '.binary_assets.gnoland.sha256' "$VERSIONS")" = 'aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28' ] || fail "VERSIONS gnoland hash is wrong"
-[ "$(jq -r '.binary_assets.gnokey.sha256' "$VERSIONS")" = '38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511' ] || fail "VERSIONS gnokey hash is wrong"
+[ "$(jq -r '.binary_assets.gnoland.sha256' "$VERSIONS")" = 'ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3' ] || fail "VERSIONS gnoland hash is wrong"
+[ "$(jq -r '.binary_assets.gnokey.sha256' "$VERSIONS")" = '86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14' ] || fail "VERSIONS gnokey hash is wrong"
+[ "$(jq -r '.binary_assets.gnoland.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnoland reported version is wrong"
+[ "$(jq -r '.binary_assets.gnokey.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnokey reported version is wrong"
 [ "$(jq -r '.genesis.sha256' "$VERSIONS")" = 'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0' ] || fail "VERSIONS genesis hash is wrong"
 [ "$(jq -r '.endpoints.faucet' "$VERSIONS")" = 'null' ] || fail "VERSIONS must state that no faucet exists"
 [ "$(jq -r '.candidate_registration.status' "$VERSIONS")" = 'enabled' ] || fail "candidate registration is not enabled"
@@ -111,6 +115,8 @@ fi
 [ "$(jq -r '.snapshot.status' "$VERSIONS")" = 'disabled' ] || fail "snapshot status is not disabled"
 [ "$(jq -r '.architecture' "$VALLEY")" = 'v1' ] || fail "VALLEY topology is not v1"
 [ "$(jq -r '.public_launcher' "$VALLEY")" = 'direct' ] || fail "public launcher must be direct"
+[ "$(jq -r '.release.versioned_tag' "$VALLEY")" = 'v1.2.0' ] || fail "VALLEY versioned release tag is wrong"
+[ "$(jq -r '.install.reported_version' "$VALLEY")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VALLEY asset reported version is wrong"
 [ "$(jq -r '.endpoints.faucet' "$VALLEY")" = 'null' ] || fail "VALLEY must state that no faucet exists"
 
 active_files=("$ROOT/README.md" "$ROOT/VERSIONS.json" "$ROOT/VALLEY.json")
@@ -122,10 +128,14 @@ fi
 for option in '1a' '1b' '1c' '1d' '1e' '1f' '1g' '2a' '2b' '2c' '2d' '3a' '3b' '3c' '3d'; do
     grep -Fq "$option" "$MAIN" || fail "menu option $option is missing"
 done
-grep -Fq "1b. Update Gnoland/Gnokey from Pinned Mainnet Release (\${GNOLAND_RELEASE_COMMIT:0:12})" "$MAIN" ||
-    fail "1b menu entry does not surface the pinned release commit"
-grep -Fq "Target release commit: \${GNOLAND_RELEASE_COMMIT}" "$MAIN" ||
-    fail "update confirmation does not surface the full pinned release commit"
+grep -Fq 'readonly GNOLAND_ASSET_VERSION="chain/mainnet.3435+139a63fe6"' "$MAIN" ||
+    fail "main launcher asset version pin is missing"
+grep -Fq "1b. Update Gnoland/Gnokey from Pinned Mainnet Assets (\${GNOLAND_ASSET_VERSION})" "$MAIN" ||
+    fail "1b menu entry does not surface the pinned asset version"
+grep -Fq "Target source commit: \${GNOLAND_SOURCE_COMMIT}" "$MAIN" ||
+    fail "update confirmation does not surface the source commit"
+grep -Fq "Target asset version: \${GNOLAND_ASSET_VERSION}" "$MAIN" ||
+    fail "update confirmation does not surface the asset version"
 grep -Fq 'readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"' "$MAIN" || fail "mainnet valoper realm pin is missing"
 grep -Fq 'readonly VALOPER_GAS_FEE="1000000ugnot"' "$MAIN" || fail "mainnet valoper gas fee pin is missing"
 grep -Fq 'readonly VALOPER_GAS_WANTED=50000000' "$MAIN" || fail "mainnet valoper gas wanted pin is missing"

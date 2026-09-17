@@ -26,7 +26,7 @@ Option `1a` asks for the node moniker, a two-digit local port prefix, an optiona
 
 1. backs up existing node secrets and the local keyring when present;
 2. checks the selected service belongs to the current OS-user instance;
-3. fetches `chain/mainnet` and checks out source commit `31b6650a100d9baf14e7669f8f0df924f1f841e0`;
+3. fetches `chain/mainnet` and checks out source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`;
 4. downloads the official Linux amd64 `gnoland` and `gnokey` assets and verifies their hashes;
 5. downloads the official mainnet genesis into `misc/deployments/mainnet.gno.land/` and verifies its SHA-256;
 6. creates the node configuration and fresh node secrets;

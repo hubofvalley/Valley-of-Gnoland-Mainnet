@@ -17,7 +17,7 @@ bash resources/valleyofGnoland.sh doctor --strict
 The doctor checks:
 
 - the published Linux amd64 `gnoland` and `gnokey` executable hashes;
-- the pinned `chain/mainnet` source commit `31b6650a100d9baf14e7669f8f0df924f1f841e0`;
+- the pinned `chain/mainnet` source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`;
 - the official mainnet genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
 - the two official persistent peers in `config.toml`;
 - the service unit's `gnoland-1` chain ID and mainnet startup flags;

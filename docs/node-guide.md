@@ -8,8 +8,10 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 |---|---|
 | Chain ID | `gnoland-1` |
 | Source branch | `chain/mainnet` |
-| Source branch commit | `31b6650a100d9baf14e7669f8f0df924f1f841e0` |
+| Source branch commit | `00417a1be97b9a311d9669ae7aa9585b277ee594` |
 | Release tag commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
+| Versioned release | `v1.2.0` at launch commit `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
+| Current `chain/mainnet` asset identity | `chain/mainnet.3435+139a63fe6` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
 | RPC | `https://rpc.gno.land` |
@@ -22,8 +24,8 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 Published Linux amd64 hashes:
 
 ```text
-gnoland_linux_amd64  aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28
-gnokey_linux_amd64   38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511
+gnoland_linux_amd64  ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3
+gnokey_linux_amd64   86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14
 ```
 
 ## Source and release metadata
@@ -33,10 +35,16 @@ The source checkout is pinned to the current `chain/mainnet` branch commit. The 
 ```bash
 git clone https://github.com/gnolang/gno.git "$HOME/gno"
 git -C "$HOME/gno" fetch --depth 1 origin refs/heads/chain/mainnet
-git -C "$HOME/gno" checkout --detach --force 31b6650a100d9baf14e7669f8f0df924f1f841e0
+git -C "$HOME/gno" checkout --detach --force 00417a1be97b9a311d9669ae7aa9585b277ee594
 ```
 
 Valley installs the official Linux amd64 release assets after checking their hashes. It does not substitute an unpinned source build.
+
+The current `chain/mainnet` `gnoland` and `gnokey` assets both report
+`chain/mainnet.3435+139a63fe6`. Upstream also publishes `v1.2.0`, whose tag peels
+to the original mainnet launch commit. Valley keeps using the `chain/mainnet`
+operator assets because that is the path documented by the official mainnet
+validator guide, while retaining exact hashes to prevent silent asset drift.
 
 ## Genesis
 

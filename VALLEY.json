@@ -41,9 +41,11 @@
     "tag": "chain/mainnet",
     "commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
     "tag_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
+    "versioned_tag": "v1.2.0",
+    "versioned_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
     "genesis_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
     "source_branch": "chain/mainnet",
-    "source_commit": "31b6650a100d9baf14e7669f8f0df924f1f841e0",
+    "source_commit": "00417a1be97b9a311d9669ae7aa9585b277ee594",
     "deployment_path": "misc/deployments/mainnet.gno.land/",
     "genesis_sha256": "ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0",
     "source_repository": "https://github.com/gnolang/gno.git"
@@ -57,9 +59,10 @@
       "gnoland": "gnoland_linux_amd64",
       "gnokey": "gnokey_linux_amd64"
     },
+    "reported_version": "chain/mainnet.3435+139a63fe6",
     "binary_sha256": {
-      "gnoland": "aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635d91403117db28",
-      "gnokey": "38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
+      "gnoland": "ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3",
+      "gnokey": "86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14"
     }
   },
   "genesis": {
