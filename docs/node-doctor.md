@@ -21,9 +21,12 @@ The doctor checks:
 - the official mainnet genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
 - the two official persistent peers in `config.toml`;
 - the service unit's `gnoland-1` chain ID and mainnet startup flags;
-- local RPC network identity and the official comparison RPC;
+- local RPC network identity, node-reported `catching_up` state, current height, and live peer count;
+- the official comparison RPC network identity and its observed height relative to the local node;
 - NTP synchronization when available; and
 - a basic free-disk safety signal.
+
+The height comparison is deliberately observational. It reports the raw block difference against `https://rpc.gno.land` when both endpoints identify as `gnoland-1`, but it does not invent a healthy-gap threshold or treat the comparison RPC as a canonical network-head oracle.
 
 It does not change a node or infer validator admission. A candidate must use a separately verified mainnet funding and registration process; this Valley does not provide one.
 
