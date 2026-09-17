@@ -141,6 +141,10 @@ grep -Fq 'GetValoperRegisterFee()' "$MAIN" || fail "2c does not verify the curre
 grep -Fq 'Registration blocked: the current on-chain valoper registration fee is' "$MAIN" || fail "2c does not fail closed on a nonzero registration fee"
 grep -Fq 'read -r -p "Enter operator g1... address: " OPERATOR_ADDR' "$MAIN" || fail "2c does not preserve the Testnet operator-address prompt"
 grep -Fq 'derived_operator_addr=$(operator_key_address "$KEY_NAME")' "$MAIN" || fail "2c does not verify the entered operator address against the selected signer"
+if grep -Fq 'Registration blocked: local node must be synced on' "$MAIN"; then
+    fail "2c must not hard-block candidate registration on local RPC sync state"
+fi
+grep -Fq 'candidate registration itself is signed with gnokey and broadcast through' "$MAIN" || fail "2c does not document local sync as advisory"
 grep -Fq 'GovDAO' "$MAIN" || fail "2c does not surface the GovDAO admission gate"
 
 # Keep the normal 2c interaction sequence aligned with Valley of Gnoland Testnet.

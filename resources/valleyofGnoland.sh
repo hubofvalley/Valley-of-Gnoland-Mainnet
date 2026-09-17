@@ -582,7 +582,7 @@ function show_validator_pubkey() {
 }
 
 function register_valoper_candidate() {
-    local status_json local_network catching_up register_fee derived_operator_addr tx_status
+    local register_fee derived_operator_addr tx_status
 
     echo -e "${CYAN}Register Gno.land Mainnet Valoper Candidate${RESET}"
     echo -e "${YELLOW}This broadcasts a transaction. It creates a candidate profile only, not active validator status.${RESET}"
@@ -599,21 +599,10 @@ function register_valoper_candidate() {
     read -r -p "Enter operator g1... address: " OPERATOR_ADDR
     read -r -p "Enter consensus gpub1... public key: " CONSENSUS_PUBKEY
 
-    # Preserve the Testnet interaction flow while keeping mainnet-only safety
-    # checks silent on the normal path. Any failed check stops before preview
-    # and broadcast rather than changing the successful UX sequence.
-    status_json=$(get_local_status_json)
-    local_network=$(echo "$status_json" | jq -r '.result.node_info.network // empty' 2>/dev/null)
-    catching_up=$(echo "$status_json" | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null)
-    if [ "$local_network" != "$GNOLAND_CHAIN_ID" ] || [ "$catching_up" != "false" ]; then
-        echo -e "${RED}Registration blocked: local node must be synced on ${GNOLAND_CHAIN_ID}.${RESET}"
-        echo -e "${YELLOW}Confirm option 1e reports a synced mainnet node, then retry.${RESET}"
-        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
-        read -r
-        menu
-        return
-    fi
-
+    # Upstream recommends completing node sync before validator onboarding, but
+    # candidate registration itself is signed with gnokey and broadcast through
+    # the configured public mainnet RPC. Local RPC availability/sync state is
+    # therefore advisory and must not create a false registration blocker.
     if ! operator_key_exists "$KEY_NAME"; then
         echo -e "${RED}Operator key '$KEY_NAME' was not found in $GNOKEY_HOME.${RESET}"
         echo -e "${YELLOW}Create/recover it with option 2a, then retry.${RESET}"
