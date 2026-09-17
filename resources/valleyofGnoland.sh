@@ -349,6 +349,7 @@ function deploy_gnoland_node() {
 
 function update_gnoland_binary() {
     echo -e "${YELLOW}Update gnoland and gnokey from the pinned ${GNOLAND_SOURCE_BRANCH} source and verified release assets.${RESET}"
+    echo -e "${YELLOW}Target release commit: ${GNOLAND_RELEASE_COMMIT}${RESET}"
     if ! prompt_back_or_continue; then
         return
     fi
@@ -732,7 +733,7 @@ function menu() {
     echo
     echo "1. Node Interactions"
     echo "   1a. Deploy/Re-deploy Gnoland Node"
-    echo "   1b. Update Gnoland/Gnokey from Pinned Mainnet Release"
+    echo "   1b. Update Gnoland/Gnokey from Pinned Mainnet Release (${GNOLAND_RELEASE_COMMIT:0:12})"
     echo "   1c. Apply Snapshot"
     echo "   1d. Add/Reset Peers"
     echo "   1e. Show Node Status"
