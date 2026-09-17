@@ -56,6 +56,9 @@ jobs:
       - name: Run local-helper regression test
         run: bash tests/runtime_script_pin_test.sh
 
+      - name: Run validator interaction regression test
+        run: bash tests/validator_interactions_test.sh
+
       - name: Check patch whitespace
         run: git diff --check
 
