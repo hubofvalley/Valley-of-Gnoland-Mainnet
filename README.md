@@ -6,7 +6,7 @@ Interactive terminal tooling by **Grand Valley** for installing, updating, inspe
 
 [Gno.land](https://gno.land) is the Gno blockchain network maintained by the Gno community. This Valley installs the official Linux amd64 `chain/mainnet` release, keeps its source checkout pinned to the published mainnet branch, writes an isolated user-owned service configuration, and provides read-only status and diagnostic views.
 
-This repository does not automate validator admission, transaction broadcasting, or signing. Candidate registration is intentionally disabled until the mainnet funding route and transaction procedure are independently verified. Mainnet has no public faucet. The snapshot menu is deliberately fail-closed because no provider has been independently verified for `gnoland-1`.
+This repository does not automate validator admission. Option `2c` can prepare, preview, sign through the local `gnokey` keyring, and broadcast the official mainnet valoper-candidate registration transaction after explicit operator confirmation. Registration only creates a candidate profile; GovDAO must still approve a proposal before the node joins the active validator set. Mainnet has no public faucet. The snapshot menu is deliberately fail-closed because no provider has been independently verified for `gnoland-1`.
 
 ## Network facts
 
@@ -22,6 +22,7 @@ This repository does not automate validator admission, transaction broadcasting,
 | RPC and comparison RPC | `https://rpc.gno.land` |
 | Web | `https://gno.land` |
 | Faucet | none - mainnet has no public faucet |
+| Valoper candidate realm | `r/gnops/valopers` |
 | Active validator realm | `r/sys/validators/v0` |
 | Official persistent peers | `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656` |
 
@@ -101,7 +102,7 @@ The branch commit and release tag commit are kept separate deliberately. The rel
 - Read-only Node Doctor with human and JSON output.
 - Read-only release-identity preflight for coordinated-upgrade review.
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
-- Disabled candidate registration with an explicit no-faucet and funding/procedure warning.
+- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with synced-node checks, transaction preview, and explicit broadcast confirmation.
 
 ## Documentation
 

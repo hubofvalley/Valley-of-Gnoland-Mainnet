@@ -62,6 +62,7 @@ facts=(
     'https://rpc.gno.land'
     'https://gno.land'
     'g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656'
+    'r/gnops/valopers'
     'r/sys/validators/v0'
 )
 for fact in "${facts[@]}"; do
@@ -99,7 +100,14 @@ fi
 [ "$(jq -r '.binary_assets.gnokey.sha256' "$VERSIONS")" = '38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511' ] || fail "VERSIONS gnokey hash is wrong"
 [ "$(jq -r '.genesis.sha256' "$VERSIONS")" = 'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0' ] || fail "VERSIONS genesis hash is wrong"
 [ "$(jq -r '.endpoints.faucet' "$VERSIONS")" = 'null' ] || fail "VERSIONS must state that no faucet exists"
-[ "$(jq -r '.candidate_registration.status' "$VERSIONS")" = 'disabled' ] || fail "candidate registration is not disabled"
+[ "$(jq -r '.candidate_registration.status' "$VERSIONS")" = 'enabled' ] || fail "candidate registration is not enabled"
+[ "$(jq -r '.candidate_registration.candidate_realm' "$VERSIONS")" = 'r/gnops/valopers' ] || fail "candidate realm is wrong"
+[ "$(jq -r '.candidate_registration.function' "$VERSIONS")" = 'Register' ] || fail "candidate registration function is wrong"
+[ "$(jq -r '.candidate_registration.gas_fee' "$VERSIONS")" = '1000000ugnot' ] || fail "candidate registration gas fee is wrong"
+[ "$(jq -r '.candidate_registration.gas_wanted' "$VERSIONS")" = '50000000' ] || fail "candidate registration gas wanted is wrong"
+[ "$(jq -r '.candidate_registration.active_validator_realm' "$VERSIONS")" = 'r/sys/validators/v0' ] || fail "candidate active validator realm is wrong"
+[ "$(jq -r '.candidate_registration.requires_govdao_approval' "$VERSIONS")" = 'true' ] || fail "candidate registration must require GovDAO approval"
+[ "$(jq -r '.candidate_registration.runtime_register_fee_guard' "$VERSIONS")" = 'GetValoperRegisterFee()==0' ] || fail "candidate registration runtime fee guard is missing"
 [ "$(jq -r '.snapshot.status' "$VERSIONS")" = 'disabled' ] || fail "snapshot status is not disabled"
 [ "$(jq -r '.architecture' "$VALLEY")" = 'v1' ] || fail "VALLEY topology is not v1"
 [ "$(jq -r '.public_launcher' "$VALLEY")" = 'direct' ] || fail "public launcher must be direct"
@@ -118,5 +126,20 @@ grep -Fq "1b. Update Gnoland/Gnokey from Pinned Mainnet Release (\${GNOLAND_RELE
     fail "1b menu entry does not surface the pinned release commit"
 grep -Fq "Target release commit: \${GNOLAND_RELEASE_COMMIT}" "$MAIN" ||
     fail "update confirmation does not surface the full pinned release commit"
+grep -Fq 'readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"' "$MAIN" || fail "mainnet valoper realm pin is missing"
+grep -Fq 'readonly VALOPER_GAS_FEE="1000000ugnot"' "$MAIN" || fail "mainnet valoper gas fee pin is missing"
+grep -Fq 'readonly VALOPER_GAS_WANTED=50000000' "$MAIN" || fail "mainnet valoper gas wanted pin is missing"
+grep -Fq '2c. Mainnet Validator Registration' "$MAIN" || fail "2c mainnet registration menu entry is missing"
+if grep -Fq '2c. Mainnet Validator Registration (disabled)' "$MAIN"; then
+    fail "2c mainnet registration menu is still marked disabled"
+fi
+grep -Fq -- '-pkgpath "gno.land/$GNOLAND_VALOPER_REALM"' "$MAIN" || fail "2c does not call the verified valoper realm"
+grep -Fq -- '-func Register' "$MAIN" || fail "2c does not call Register"
+grep -Fq -- '-gas-fee "$VALOPER_GAS_FEE"' "$MAIN" || fail "2c does not use the verified gas fee"
+grep -Fq -- '-gas-wanted "$VALOPER_GAS_WANTED"' "$MAIN" || fail "2c does not use the verified gas wanted"
+grep -Fq 'GetValoperRegisterFee()' "$MAIN" || fail "2c does not verify the current on-chain registration fee"
+grep -Fq 'This Valley only automates the verified zero-registration-fee flow' "$MAIN" || fail "2c does not fail closed on a nonzero registration fee"
+grep -Fq 'OPERATOR_ADDR=$(operator_key_address "$KEY_NAME")' "$MAIN" || fail "2c does not derive the operator address from the selected signer key"
+grep -Fq 'GovDAO' "$MAIN" || fail "2c does not surface the GovDAO admission gate"
 
 printf '%s\n' 'MAINNET_CONTRACT_TEST_OK'

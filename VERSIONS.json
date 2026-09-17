@@ -45,9 +45,19 @@
     "script": "resources/apply_snapshot.sh"
   },
   "candidate_registration": {
-    "status": "disabled",
-    "reason": "No verified mainnet funding route, gas specification, or transaction procedure is configured; no faucet exists."
+    "status": "enabled",
+    "candidate_realm": "r/gnops/valopers",
+    "function": "Register",
+    "gas_fee": "1000000ugnot",
+    "gas_wanted": 50000000,
+    "chain_id": "gnoland-1",
+    "remote": "https://rpc.gno.land",
+    "active_validator_realm": "r/sys/validators/v0",
+    "requires_govdao_approval": true,
+    "public_faucet": false,
+    "runtime_register_fee_guard": "GetValoperRegisterFee()==0",
+    "source": "misc/deployments/mainnet.gno.land/VALIDATOR.md"
   },
   "verification_status": "verified_facts_only",
-  "last_reviewed": "2026-09-14"
+  "last_reviewed": "2026-09-18"
 }

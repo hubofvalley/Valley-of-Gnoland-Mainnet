@@ -15,6 +15,7 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 | RPC | `https://rpc.gno.land` |
 | Web | `https://gno.land` |
 | Faucet | none - mainnet has no public faucet |
+| Valoper candidate realm | `r/gnops/valopers` |
 | Active validator realm | `r/sys/validators/v0` |
 | Official persistent peers | `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656` |
 
@@ -90,6 +91,8 @@ g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl9223
 
 After startup, option `1e` or Node Doctor compares the local RPC network to `gnoland-1` and compares public status with `https://rpc.gno.land`. A public endpoint response does not by itself prove local service health.
 
-The active validator realm is `r/sys/validators/v0`. Valley option `2c` remains disabled: mainnet has no public faucet, and no funding route, gas specification, or registration transaction procedure has been verified for automation.
+The active validator realm is `r/sys/validators/v0`. Valley option `2c` implements the verified upstream candidate-registration flow against `gno.land/r/gnops/valopers` using `Register`, `1000000ugnot` gas fee, `50000000` gas wanted, chain ID `gnoland-1`, and `https://rpc.gno.land`. It first requires the local RPC to identify as `gnoland-1` with `catching_up=false`, queries `gno.land/r/sys/params.GetValoperRegisterFee()`, and proceeds only when that current on-chain registration fee is verified as zero. It then previews the complete transaction before explicit broadcast confirmation.
+
+Mainnet has no public faucet. The operator key used to sign must control the supplied operator `g1...` address and that account must already hold enough GNOT to pay fees. A successful registration only creates a valoper candidate profile; a GovDAO proposal must still add the candidate to `r/sys/validators/v0` before the node becomes active.
 
 Snapshot application is disabled until a provider is independently verified for `gnoland-1`.
