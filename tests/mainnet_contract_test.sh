@@ -133,13 +133,28 @@ grep -Fq '2c. Mainnet Validator Registration' "$MAIN" || fail "2c mainnet regist
 if grep -Fq '2c. Mainnet Validator Registration (disabled)' "$MAIN"; then
     fail "2c mainnet registration menu is still marked disabled"
 fi
-grep -Fq -- '-pkgpath "gno.land/$GNOLAND_VALOPER_REALM"' "$MAIN" || fail "2c does not call the verified valoper realm"
+grep -Fq -- '-pkgpath gno.land/r/gnops/valopers' "$MAIN" || fail "2c does not call the verified valoper realm"
 grep -Fq -- '-func Register' "$MAIN" || fail "2c does not call Register"
 grep -Fq -- '-gas-fee "$VALOPER_GAS_FEE"' "$MAIN" || fail "2c does not use the verified gas fee"
 grep -Fq -- '-gas-wanted "$VALOPER_GAS_WANTED"' "$MAIN" || fail "2c does not use the verified gas wanted"
 grep -Fq 'GetValoperRegisterFee()' "$MAIN" || fail "2c does not verify the current on-chain registration fee"
-grep -Fq 'This Valley only automates the verified zero-registration-fee flow' "$MAIN" || fail "2c does not fail closed on a nonzero registration fee"
-grep -Fq 'OPERATOR_ADDR=$(operator_key_address "$KEY_NAME")' "$MAIN" || fail "2c does not derive the operator address from the selected signer key"
+grep -Fq 'Registration blocked: the current on-chain valoper registration fee is' "$MAIN" || fail "2c does not fail closed on a nonzero registration fee"
+grep -Fq 'read -r -p "Enter operator g1... address: " OPERATOR_ADDR' "$MAIN" || fail "2c does not preserve the Testnet operator-address prompt"
+grep -Fq 'derived_operator_addr=$(operator_key_address "$KEY_NAME")' "$MAIN" || fail "2c does not verify the entered operator address against the selected signer"
 grep -Fq 'GovDAO' "$MAIN" || fail "2c does not surface the GovDAO admission gate"
+
+# Keep the normal 2c interaction sequence aligned with Valley of Gnoland Testnet.
+for prompt in \
+    "Enter operator key name (default 'operator'): " \
+    "Enter validator moniker: " \
+    "Enter short validator description: " \
+    "Enter infrastructure type (cloud/on-prem/data-center): " \
+    "Enter operator g1... address: " \
+    "Enter consensus gpub1... public key: " \
+    "Transaction preview:" \
+    "Broadcast registration transaction? (yes/no): " \
+    "Candidate registration submitted if broadcast succeeded."; do
+    grep -Fq -- "$prompt" "$MAIN" || fail "2c Testnet-aligned UX prompt missing: $prompt"
+done
 
 printf '%s\n' 'MAINNET_CONTRACT_TEST_OK'
