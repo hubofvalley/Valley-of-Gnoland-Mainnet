@@ -21,6 +21,7 @@ This repository does not automate validator admission. Option `2c` can prepare, 
 | Current `chain/mainnet` asset identity | `chain/mainnet.3435+139a63fe6` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
+| Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
 | RPC and comparison RPC | `https://rpc.gno.land` |
 | Web | `https://gno.land` |
 | Faucet | none - mainnet has no public faucet |
@@ -91,16 +92,26 @@ Read [docs/usage.md](docs/usage.md) before using the install, update, service, o
 
 Installation and update:
 
-1. fetch the `chain/mainnet` source branch and require commit `00417a1be97b9a311d9669ae7aa9585b277ee594`;
-2. download the official `chain/mainnet` `genesis.json` into `misc/deployments/mainnet.gno.land/` and verify its SHA-256; and
-3. download the published Linux amd64 `gnoland` and `gnokey` assets and verify their SHA-256 values before installation.
+1. fetch the exact reviewed source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`; movement of the upstream `chain/mainnet` branch tip is reported but does not invalidate the reviewed commit;
+2. compare the live `chain/mainnet` release digests with Valley's reviewed pins when GitHub release metadata is reachable;
+3. download the official compressed genesis, verify its compressed SHA-256, decompress it, and verify the final `genesis.json` SHA-256; and
+4. download the published Linux amd64 `gnoland` and `gnokey` assets, verify their SHA-256 values and reported release identity, then stage everything before touching the live node.
 
 The branch commit and release tag commit are kept separate deliberately. The release assets identify the branch build, while `VERSIONS.json` records both the source pin and the tag metadata. No unpinned source build or unverified binary is accepted by the runtime scripts.
+
+`1a` uses a stage-first safe cutover. Existing validator/node secrets are preserved during a Valley-managed reinstall; a persistent backup is offered but is optional. The previous runtime is kept only as a temporary rollback source until the replacement node passes its `gnoland-1` RPC startup gate.
+
+`1b` is transactional. It exits without restart when the source, genesis, and binaries already match the reviewed target. When a node-runtime change is needed it stages and verifies artifacts first, stops an active service only for cutover, verifies the restarted RPC network, and restores the prior source/binaries if the health gate fails. A `gnokey`-only change does not restart `gnoland`.
 
 ## Features
 
 - Pinned `chain/mainnet` source checkout and official mainnet genesis verification.
 - Verified Linux amd64 `gnoland` and `gnokey` release assets.
+- Stage-first install/reinstall with optional persistent backup and validator/node identity preservation.
+- Transactional no-op-aware binary/source updates with post-restart RPC health checks and rollback.
+- Release-drift detection against current GitHub release asset digests.
+- Grand Valley-managed shell-profile block that does not delete unrelated `go/bin` lines.
+- UFW setup that preserves the detected/configured SSH port and requires an explicit second confirmation.
 - Mainnet deployment path and official persistent peer configuration.
 - Isolated service ownership checks, port-prefix selection, status, logs, and key management.
 - Read-only Node Doctor with human and JSON output.

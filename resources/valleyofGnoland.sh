@@ -25,11 +25,15 @@ readonly VALOPER_GAS_FEE="1000000ugnot"
 readonly VALOPER_GAS_WANTED=50000000
 readonly VALLEY_RUNTIME_REF="84955d3046ff7880b0c0525bd58b303f86f70243"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
+readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
+readonly PROFILE_END="# <<< GRAND VALLEY GNOLAND MAINNET <<<"
 
 run_node_doctor_script() {
     local script_dir script_file exit_code
 
-    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+    if ! script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd); then
+        script_dir=""
+    fi
     if [ -n "$script_dir" ] && [ -f "$script_dir/gnoland_node_doctor.sh" ]; then
         bash "$script_dir/gnoland_node_doctor.sh" "$@"
         return $?
@@ -102,10 +106,6 @@ while :; do
     GNOLAND_MAINNET_SERVICE_NAME=""
 done
 
-# Keep the established per-user startup configuration, while replacing only
-# the Valley-managed values on each invocation.
-sed -i '/^export GNOLAND_MAINNET_SERVICE_NAME=/d' "$HOME/.bash_profile" 2>/dev/null || true
-echo "export GNOLAND_MAINNET_SERVICE_NAME=\"$GNOLAND_MAINNET_SERVICE_NAME\"" >> "$HOME/.bash_profile"
 export GNOLAND_MAINNET_SERVICE_NAME
 
 service_belongs_to_current_instance() {
@@ -214,19 +214,68 @@ echo -e "$ENDPOINTS"
 echo -e "\n${YELLOW}Press Enter to continue${RESET}"
 read -r
 
-sed -i '/^export GNOLAND_CHAIN_ID=/d;/^export GNOLAND_MAINNET_HOME=/d;/^export GNOLAND_DEPLOYMENT_DIR=/d;/^export GNOLAND_GENESIS=/d;/^export GNOKEY_HOME=/d;/^export GNO_SOURCE_DIR=/d;/^export GNOROOT=/d;/^export GNOLAND_PUBLIC_REMOTE=/d;/go\/bin/d' "$HOME/.bash_profile" 2>/dev/null || true
-{
-    echo "export GNOLAND_CHAIN_ID=\"$GNOLAND_CHAIN_ID_DEFAULT\""
-    echo "export GNOLAND_MAINNET_HOME=\"$GNOLAND_MAINNET_HOME\""
-    echo "export GNOLAND_DEPLOYMENT_DIR=\"$GNOLAND_DEPLOYMENT_DIR\""
-    echo "export GNOLAND_GENESIS=\"$GNOLAND_GENESIS\""
-    echo "export GNOKEY_HOME=\"$GNOKEY_HOME\""
-    echo "export GNO_SOURCE_DIR=\"$GNO_SOURCE_DIR\""
-    echo "export GNOROOT=\"$GNOROOT\""
-    echo "export GNOLAND_PUBLIC_REMOTE=\"$GNOLAND_PUBLIC_RPC_DEFAULT\""
-    # shellcheck disable=SC2016
-    echo 'export PATH="$HOME/go/bin:$PATH"'
-} >> "$HOME/.bash_profile"
+write_valley_profile_block() {
+    local profile="$HOME/.bash_profile" tmp
+    tmp=$(mktemp)
+    if [ -f "$profile" ]; then
+        awk -v begin="$PROFILE_BEGIN" -v end="$PROFILE_END" '
+            $0 == begin {skip=1; next}
+            $0 == end {skip=0; next}
+            skip {next}
+            /^export GNOLAND_CHAIN_ID=/ {next}
+            /^export GNOLAND_MAINNET_HOME=/ {next}
+            /^export GNOLAND_MAINNET_SERVICE_NAME=/ {next}
+            /^export GNOLAND_DEPLOYMENT_DIR=/ {next}
+            /^export GNOLAND_GENESIS=/ {next}
+            /^export GNOLAND_PUBLIC_REMOTE=/ {next}
+            /^export GNOKEY_HOME=/ {next}
+            /^export GNO_SOURCE_DIR=/ {next}
+            /^export GNOROOT=/ {next}
+            {print}
+        ' "$profile" > "$tmp"
+    fi
+    cat >> "$tmp" <<EOF_PROFILE
+$PROFILE_BEGIN
+export GNOLAND_CHAIN_ID="$GNOLAND_CHAIN_ID_DEFAULT"
+export GNOLAND_MAINNET_HOME="$GNOLAND_MAINNET_HOME"
+export GNOLAND_MAINNET_SERVICE_NAME="$GNOLAND_MAINNET_SERVICE_NAME"
+export GNOLAND_DEPLOYMENT_DIR="$GNOLAND_DEPLOYMENT_DIR"
+export GNOLAND_GENESIS="$GNOLAND_GENESIS"
+export GNOKEY_HOME="$GNOKEY_HOME"
+export GNO_SOURCE_DIR="$GNO_SOURCE_DIR"
+export GNOROOT="$GNOROOT"
+export GNOLAND_PUBLIC_REMOTE="$GNOLAND_PUBLIC_RPC_DEFAULT"
+export PATH="\$HOME/go/bin:\$PATH"
+$PROFILE_END
+EOF_PROFILE
+    mv "$tmp" "$profile"
+}
+
+remove_valley_profile_block() {
+    local profile="$HOME/.bash_profile" tmp
+    [ -f "$profile" ] || return 0
+    tmp=$(mktemp)
+    awk -v begin="$PROFILE_BEGIN" -v end="$PROFILE_END" '
+        $0 == begin {skip=1; next}
+        $0 == end {skip=0; next}
+        skip {next}
+        /^export GNOLAND_CHAIN_ID=/ {next}
+        /^export GNOLAND_MAINNET_HOME=/ {next}
+        /^export GNOLAND_MAINNET_SERVICE_NAME=/ {next}
+        /^export GNOLAND_DEPLOYMENT_DIR=/ {next}
+        /^export GNOLAND_GENESIS=/ {next}
+        /^export GNOLAND_OPERATOR_KEY=/ {next}
+        /^export GNOLAND_REMOTE=/ {next}
+        /^export GNOLAND_PUBLIC_REMOTE=/ {next}
+        /^export GNOKEY_HOME=/ {next}
+        /^export GNO_SOURCE_DIR=/ {next}
+        /^export GNOROOT=/ {next}
+        {print}
+    ' "$profile" > "$tmp"
+    mv "$tmp" "$profile"
+}
+
+write_valley_profile_block
 # shellcheck source=/dev/null
 source "$HOME/.bash_profile" 2>/dev/null || true
 
@@ -235,7 +284,9 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 # immutable helper commit.
 run_repository_script() {
     local relative_path=$1 script_dir script_file exit_code
-    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)
+    if ! script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd); then
+        script_dir=""
+    fi
     if [ -n "$script_dir" ] && [ -f "$script_dir/../$relative_path" ]; then
         bash "$script_dir/../$relative_path"
         return $?
@@ -353,8 +404,9 @@ function deploy_gnoland_node() {
     echo -e "${YELLOW}Service:${RESET} ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}"
     echo -e "${YELLOW}Directory:${RESET} ${CYAN}$GNOLAND_MAINNET_HOME${RESET}"
     echo -e "${YELLOW}Default ports:${RESET} P2P ${CYAN}26656${RESET}, RPC ${CYAN}26657${RESET}, ABCI ${CYAN}26658${RESET}; the installer remaps local listeners with the chosen two-digit prefix."
-    echo -e "${YELLOW}Install/update method:${RESET} pinned ${GNOLAND_SOURCE_BRANCH} source plus verified Linux amd64 release assets."
-    echo -e "${RED}Installation replaces Valley node data inside the selected node directory after backup and explicit confirmation.${RESET}"
+    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus verified Linux amd64 release assets."
+    echo -e "${YELLOW}Install safety:${RESET} all artifacts are staged first; a persistent backup is optional, while existing validator/node secrets are preserved on a recognized safe reinstall."
+    echo -e "${RED}Installation rebuilds Valley node database/config only after staging and explicit confirmation.${RESET}"
     echo
     echo "This installs a Gnoland node. It does not prove validator admission."
     read -r -p $'\n\e[33mDo you want to proceed with installation? (yes/no): \e[0m' confirm
@@ -368,9 +420,11 @@ function deploy_gnoland_node() {
 }
 
 function update_gnoland_binary() {
-    echo -e "${YELLOW}Update gnoland and gnokey from the pinned ${GNOLAND_SOURCE_BRANCH} source and verified release assets.${RESET}"
+    echo -e "${YELLOW}Transactional update: compare installed state, stage and verify artifacts, then cut over only if needed.${RESET}"
     echo -e "${YELLOW}Target source commit: ${GNOLAND_SOURCE_COMMIT}${RESET}"
     echo -e "${YELLOW}Target asset version: ${GNOLAND_ASSET_VERSION}${RESET}"
+    echo "If the reviewed target is already installed, no service restart is performed."
+    echo "If a running node-runtime update fails its gnoland-1 RPC health gate, the previous source/binaries are restored."
     if ! prompt_back_or_continue; then
         return
     fi
@@ -809,7 +863,7 @@ function delete_gnoland_node() {
     rm -rf "$GNOLAND_MAINNET_HOME"
     rm -f "$GNOLAND_GENESIS"
     rm -f "$GNOLAND_BIN" "$GNOKEY_BIN"
-    sed -i '/^export GNOLAND_CHAIN_ID=/d;/^export GNOLAND_MAINNET_HOME=/d;/^export GNOLAND_MAINNET_SERVICE_NAME=/d;/^export GNOLAND_DEPLOYMENT_DIR=/d;/^export GNOLAND_GENESIS=/d;/^export GNOLAND_OPERATOR_KEY=/d;/^export GNOLAND_REMOTE=/d;/^export GNOLAND_PUBLIC_REMOTE=/d;/^export GNOKEY_HOME=/d;/^export GNO_SOURCE_DIR=/d;/^export GNOROOT=/d;/go\/bin/d' "$HOME/.bash_profile"
+    remove_valley_profile_block
     echo -e "${RED}Gnoland node deleted. Local gnokey home was not deleted: $GNOKEY_HOME${RESET}"
     menu
 }

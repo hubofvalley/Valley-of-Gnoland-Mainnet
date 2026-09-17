@@ -8,21 +8,20 @@ CYAN='\033[0;36m'
 YELLOW='\033[0;33m'
 RESET='\033[0m'
 CURRENT_STAGE="startup"
-
-on_error() {
-    local exit_code=$?
-    local line_number=${1:-unknown}
-    local failed_command=${2:-unknown}
-    trap - ERR
-    echo -e "${RED}Gno.land gnoland-1 installation failed.${RESET}" >&2
-    echo "Stage: $CURRENT_STAGE" >&2
-    echo "Line: $line_number" >&2
-    echo "Command: $failed_command" >&2
-    echo "Exit code: $exit_code" >&2
-    echo "No success status was reported. Review the error above before retrying." >&2
-    exit "$exit_code"
-}
-trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
+CUTOVER_STARTED=false
+ROLLBACK_COMPLETE=false
+SERVICE_WAS_ACTIVE=false
+TMP_DIR=""
+ROLLBACK_ROOT=""
+OLD_SOURCE_PRESENT=false
+OLD_EXTERNAL_NODE_PRESENT=false
+OLD_SERVICE_PRESENT=false
+OLD_PROFILE_PRESENT=false
+OLD_GNOLAND_PRESENT=false
+OLD_GNOKEY_PRESENT=false
+NODE_HOME_INSIDE_SOURCE=false
+SOURCE_CUTOVER_ATTEMPTED=false
+EXTERNAL_NODE_RUNTIME_STARTED=false
 
 readonly CHAIN_ID="gnoland-1"
 readonly SOURCE_BRANCH="chain/mainnet"
@@ -30,120 +29,194 @@ readonly SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"
 readonly RELEASE_TAG="chain/mainnet"
 readonly RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
 readonly RELEASE_ASSET_BASE_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet"
-readonly GENESIS_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json"
+readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"
+readonly GENESIS_GZ_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json.gz"
+readonly GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"
 readonly GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
 readonly GNOLAND_ASSET="gnoland_linux_amd64"
 readonly GNOLAND_ASSET_SHA256="ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3"
 readonly GNOKEY_ASSET="gnokey_linux_amd64"
 readonly GNOKEY_ASSET_SHA256="86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14"
+readonly ASSET_VERSION="chain/mainnet.3435+139a63fe6"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly PUBLIC_RPC="https://rpc.gno.land"
+readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
+readonly PROFILE_END="# <<< GRAND VALLEY GNOLAND MAINNET <<<"
 
 GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-$HOME/gno}
 GNOLAND_DEPLOYMENT_DIR=${GNOLAND_DEPLOYMENT_DIR:-$GNO_SOURCE_DIR/misc/deployments/mainnet.gno.land}
 GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$GNO_SOURCE_DIR/gnoland-data}
 GNOKEY_HOME=${GNOKEY_HOME:-$HOME/.config/gno}
 GENESIS_FILE=${GNOLAND_GENESIS:-$GNOLAND_DEPLOYMENT_DIR/genesis.json}
-if [ "$(realpath -m "$GENESIS_FILE")" != "$(realpath -m "$GNOLAND_DEPLOYMENT_DIR/genesis.json")" ]; then
-    echo -e "${RED}Mainnet genesis must be stored under $GNOLAND_DEPLOYMENT_DIR.${RESET}" >&2
-    false
-fi
 GNOROOT=${GNOROOT:-$GNO_SOURCE_DIR}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
 OS_USER=$(id -un)
 
-if [ -n "${SUDO_USER:-}" ]; then
-    echo -e "${RED}Run Valley of Gnoland as the node OS user, not with sudo.${RESET}" >&2
-    echo "The installer requests sudo only for packages, firewall, and systemd." >&2
-    false
-fi
+cleanup() {
+    [ -z "$TMP_DIR" ] || rm -rf "$TMP_DIR"
+    if ! $CUTOVER_STARTED && [ -n "$ROLLBACK_ROOT" ] && [ -d "$ROLLBACK_ROOT" ]; then
+        rm -rf "$ROLLBACK_ROOT"
+    fi
+}
+trap cleanup EXIT
+
+rollback_install() {
+    $CUTOVER_STARTED || return 0
+    $ROLLBACK_COMPLETE && return 0
+    ROLLBACK_COMPLETE=true
+    set +e
+    echo -e "${YELLOW}Installation did not pass the startup gate. Restoring the previous runtime.${RESET}" >&2
+    sudo systemctl stop "$GNOLAND_MAINNET_SERVICE_NAME" >/dev/null 2>&1 || true
+    sudo rm -f "$SERVICE_FILE"
+
+    if $OLD_SOURCE_PRESENT; then
+        if $SOURCE_CUTOVER_ATTEMPTED && [ -d "$GNO_SOURCE_DIR" ]; then rm -rf "$GNO_SOURCE_DIR"; fi
+        if [ -d "$ROLLBACK_ROOT/source" ]; then mv "$ROLLBACK_ROOT/source" "$GNO_SOURCE_DIR" || true; fi
+    elif $SOURCE_CUTOVER_ATTEMPTED && [ -d "$GNO_SOURCE_DIR" ]; then
+        rm -rf "$GNO_SOURCE_DIR"
+    fi
+    if $OLD_EXTERNAL_NODE_PRESENT && [ -d "$ROLLBACK_ROOT/node-data" ]; then
+        if $EXTERNAL_NODE_RUNTIME_STARTED; then rm -rf "$GNOLAND_MAINNET_HOME"; fi
+        mv "$ROLLBACK_ROOT/node-data" "$GNOLAND_MAINNET_HOME" || true
+    elif $EXTERNAL_NODE_RUNTIME_STARTED; then
+        rm -rf "$GNOLAND_MAINNET_HOME"
+    fi
+
+    if $OLD_GNOLAND_PRESENT && [ -f "$ROLLBACK_ROOT/gnoland" ]; then
+        install -m 0755 "$ROLLBACK_ROOT/gnoland" "$GNOLAND_BIN" || true
+    elif ! $OLD_GNOLAND_PRESENT; then
+        rm -f "$GNOLAND_BIN"
+    fi
+    if $OLD_GNOKEY_PRESENT && [ -f "$ROLLBACK_ROOT/gnokey" ]; then
+        install -m 0755 "$ROLLBACK_ROOT/gnokey" "$GNOKEY_BIN" || true
+    elif ! $OLD_GNOKEY_PRESENT; then
+        rm -f "$GNOKEY_BIN"
+    fi
+    if $OLD_SERVICE_PRESENT && [ -f "$ROLLBACK_ROOT/service" ]; then
+        sudo cp "$ROLLBACK_ROOT/service" "$SERVICE_FILE" || true
+    fi
+    if $OLD_PROFILE_PRESENT && [ -f "$ROLLBACK_ROOT/bash_profile" ]; then
+        cp -p "$ROLLBACK_ROOT/bash_profile" "$HOME/.bash_profile" || true
+    elif ! $OLD_PROFILE_PRESENT; then
+        rm -f "$HOME/.bash_profile"
+    fi
+    sudo systemctl daemon-reload >/dev/null 2>&1 || true
+    if $SERVICE_WAS_ACTIVE && $OLD_SERVICE_PRESENT; then
+        sudo systemctl enable "$GNOLAND_MAINNET_SERVICE_NAME" >/dev/null 2>&1 || true
+        sudo systemctl restart "$GNOLAND_MAINNET_SERVICE_NAME" >/dev/null 2>&1 || true
+    fi
+    CUTOVER_STARTED=false
+    echo -e "${YELLOW}Rollback attempted. Review service status and journal before retrying.${RESET}" >&2
+    set -e
+}
+
+on_error() {
+    local exit_code=$?
+    local line_number=${1:-unknown}
+    local failed_command=${2:-unknown}
+    trap - ERR
+    rollback_install
+    echo -e "${RED}Gno.land gnoland-1 installation failed.${RESET}" >&2
+    echo "Stage: $CURRENT_STAGE" >&2
+    echo "Line: $line_number" >&2
+    echo "Command: $failed_command" >&2
+    echo "Exit code: $exit_code" >&2
+    exit "$exit_code"
+}
+trap 'on_error "$LINENO" "$BASH_COMMAND"' ERR
 
 path_is_under_home() {
     local canonical_home canonical_path
     canonical_home=$(realpath -m "$HOME")
     canonical_path=$(realpath -m "$1")
-    case "$canonical_path" in
-        "$canonical_home"/*) return 0 ;;
-        *) return 1 ;;
-    esac
+    case "$canonical_path" in "$canonical_home"/*) return 0 ;; *) return 1 ;; esac
 }
 
-for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOKEY_HOME" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
-    if ! path_is_under_home "$instance_path"; then
-        echo -e "${RED}Unsafe instance path outside $HOME: $instance_path${RESET}" >&2
-        false
+write_profile_block() {
+    local profile="$HOME/.bash_profile" tmp
+    tmp=$(mktemp)
+    if [ -f "$profile" ]; then
+        awk -v begin="$PROFILE_BEGIN" -v end="$PROFILE_END" '
+            $0 == begin {skip=1; next}
+            $0 == end {skip=0; next}
+            skip {next}
+            /^export GNOLAND_CHAIN_ID=/ {next}
+            /^export GNOLAND_MAINNET_HOME=/ {next}
+            /^export GNOLAND_MAINNET_SERVICE_NAME=/ {next}
+            /^export GNOLAND_DEPLOYMENT_DIR=/ {next}
+            /^export GNOLAND_GENESIS=/ {next}
+            /^export GNOLAND_MONIKER=/ {next}
+            /^export GNOLAND_PORT=/ {next}
+            /^export GNOLAND_OPERATOR_KEY=/ {next}
+            /^export GNOLAND_REMOTE=/ {next}
+            /^export GNOLAND_PUBLIC_REMOTE=/ {next}
+            /^export GNOKEY_HOME=/ {next}
+            /^export GNO_SOURCE_DIR=/ {next}
+            /^export GNOROOT=/ {next}
+            {print}
+        ' "$profile" > "$tmp"
     fi
-done
-
-echo -e "\n--- Gno.land gnoland-1 Node Setup ---"
-echo -e "${YELLOW}Installation and updates use the pinned ${SOURCE_BRANCH} source and verified release assets.${RESET}"
-echo "Linux amd64 gnoland and gnokey assets are checked against their official SHA-256 values."
-echo "  Source / GNOROOT: $GNO_SOURCE_DIR"
-echo "  Mainnet deployment: $GNOLAND_DEPLOYMENT_DIR"
-echo "  Node data:        $GNOLAND_MAINNET_HOME"
-echo "  Operator keyring: $GNOKEY_HOME"
-echo "  Network:          $CHAIN_ID"
-echo "  Source commit:    $SOURCE_COMMIT"
-echo "  Release tag:      $RELEASE_TAG ($RELEASE_COMMIT)"
-echo "  Service:          gnoland.service (default)"
-
-after_prompt() {
-    :
+    cat >> "$tmp" <<EOF_PROFILE
+$PROFILE_BEGIN
+export GNOLAND_MONIKER="$GNOLAND_MONIKER"
+export GNOLAND_CHAIN_ID="$CHAIN_ID"
+export GNOLAND_PORT="$GNOLAND_PORT"
+export GNOLAND_MAINNET_HOME="$GNOLAND_MAINNET_HOME"
+export GNOLAND_MAINNET_SERVICE_NAME="$GNOLAND_MAINNET_SERVICE_NAME"
+export GNOLAND_DEPLOYMENT_DIR="$GNOLAND_DEPLOYMENT_DIR"
+export GNOLAND_GENESIS="$GENESIS_FILE"
+export GNOKEY_HOME="$GNOKEY_HOME"
+export GNOLAND_OPERATOR_KEY="$OPERATOR_KEY_NAME"
+export GNO_SOURCE_DIR="$GNO_SOURCE_DIR"
+export GNOROOT="$GNOROOT"
+export GNOLAND_REMOTE="http://127.0.0.1:${GNOLAND_RPC_PORT}"
+export GNOLAND_PUBLIC_REMOTE="$PUBLIC_RPC"
+export PATH="\$HOME/go/bin:\$PATH"
+$PROFILE_END
+EOF_PROFILE
+    mv "$tmp" "$profile"
 }
 
-while :; do
-    read -r -p "Enter your GNOLAND_MONIKER: " GNOLAND_MONIKER
-    [ -n "$GNOLAND_MONIKER" ] && break
-    echo -e "${RED}Moniker is required. Please try again.${RESET}"
-done
+verify_reported_version() {
+    local binary=$1 label=$2 expected_label=$3 output version
+    output=$("$binary" version 2>&1)
+    version=$(printf '%s\n' "$output" | awk -v label="$expected_label" '$1 == label && $2 == "version:" {print $3; exit}')
+    [ "$version" = "$ASSET_VERSION" ] || { echo "$label reports '${version:-unavailable}', expected '$ASSET_VERSION'." >&2; return 1; }
+    echo -e "${GREEN}Verified $label reported version: $version${RESET}"
+}
 
-while :; do
-    read -r -p "Enter preferred port prefix (leave empty for default 26): " GNOLAND_PORT
-    GNOLAND_PORT=${GNOLAND_PORT:-26}
-    if [[ "$GNOLAND_PORT" =~ ^[0-9]{2}$ ]] && [ "$((10#$GNOLAND_PORT))" -ge 1 ] && [ "$((10#$GNOLAND_PORT))" -le 64 ]; then
-        break
+check_upstream_release_drift() {
+    local json observed_target observed_gnoland observed_gnokey observed_genesis
+    json=$(curl -m 15 -fsSL "$RELEASE_API_URL" 2>/dev/null || true)
+    if [ -z "$json" ]; then
+        echo -e "${YELLOW}Upstream release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
+        return 0
     fi
-    echo -e "${RED}Port prefix must be two digits from 01 through 64, for example 26 or 36.${RESET}"
-done
-
-read -r -p "Enter public external address host/IP for P2P (optional): " GNOLAND_EXTERNAL_HOST
-read -r -p "Configure UFW firewall rules for Gnoland? (y/n, default n): " SETUP_UFW
-SETUP_UFW=${SETUP_UFW:-n}
-
-while :; do
-    if [ -z "${GNOLAND_MAINNET_SERVICE_NAME:-}" ]; then
-        read -r -p "Enter service name (default 'gnoland'): " GNOLAND_MAINNET_SERVICE_NAME
-        GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-gnoland}
-    fi
-    GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME%.service}
-    if [[ "$GNOLAND_MAINNET_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]]; then break; fi
-    echo -e "${RED}Service name must start with a letter or number and may contain _, ., @, and -.${RESET}"
-    GNOLAND_MAINNET_SERVICE_NAME=""
-done
-
-SERVICE_FILE="/etc/systemd/system/${GNOLAND_MAINNET_SERVICE_NAME}.service"
-GNOLAND_RPC_PORT="${GNOLAND_PORT}657"
-GNOLAND_P2P_PORT="${GNOLAND_PORT}656"
-GNOLAND_ABCI_PORT="${GNOLAND_PORT}658"
-BACKUP_ROOT="$HOME/gnoland-backups"
-BACKUP_STAMP=$(date +%Y%m%d-%H%M%S)
-BACKUP_DIR="$BACKUP_ROOT/$BACKUP_STAMP"
-
-service_belongs_to_instance() {
-    local unit_user unit_workdir resolved_service_file
-    resolved_service_file=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
-    [ -n "$resolved_service_file" ] || return 0
-    if [ ! -f "$resolved_service_file" ]; then
-        echo -e "${RED}Cannot inspect existing service: $resolved_service_file${RESET}" >&2
+    observed_target=$(printf '%s' "$json" | jq -r '.target_commitish // empty')
+    observed_gnoland=$(printf '%s' "$json" | jq -r --arg n "$GNOLAND_ASSET" '.assets[]? | select(.name==$n) | .digest' | head -n 1)
+    observed_gnokey=$(printf '%s' "$json" | jq -r --arg n "$GNOKEY_ASSET" '.assets[]? | select(.name==$n) | .digest' | head -n 1)
+    observed_genesis=$(printf '%s' "$json" | jq -r '.assets[]? | select(.name=="genesis.json") | .digest' | head -n 1)
+    if [ "$observed_target" != "$RELEASE_COMMIT" ] || \
+       [ "$observed_gnoland" != "sha256:$GNOLAND_ASSET_SHA256" ] || \
+       [ "$observed_gnokey" != "sha256:$GNOKEY_ASSET_SHA256" ] || \
+       [ "$observed_genesis" != "sha256:$GENESIS_SHA256" ]; then
+        echo -e "${RED}Upstream chain/mainnet release metadata differs from Valley's reviewed pins.${RESET}" >&2
+        echo "Nothing has been stopped or deleted. Review Valley pins before installing." >&2
         return 1
     fi
+    echo -e "${GREEN}Upstream release digests still match Valley's reviewed pins.${RESET}"
+}
+
+service_belongs_to_instance() {
+    local resolved_service_file unit_user unit_workdir
+    resolved_service_file=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+    [ -n "$resolved_service_file" ] || return 0
+    [ -f "$resolved_service_file" ] || { echo -e "${RED}Cannot inspect existing service: $resolved_service_file${RESET}" >&2; return 1; }
     unit_user=$(sed -n 's/^User=//p' "$resolved_service_file" | tail -n 1)
     unit_workdir=$(sed -n 's/^WorkingDirectory=//p' "$resolved_service_file" | tail -n 1)
     if [ "$unit_user" != "$OS_USER" ] || [ "$unit_workdir" != "$GNO_SOURCE_DIR" ]; then
         echo -e "${RED}${GNOLAND_MAINNET_SERVICE_NAME}.service belongs to another instance.${RESET}" >&2
-        echo "Existing User=${unit_user:-unknown}, WorkingDirectory=${unit_workdir:-unknown}" >&2
-        echo "Requested User=$OS_USER, WorkingDirectory=$GNO_SOURCE_DIR" >&2
         return 1
     fi
 }
@@ -153,24 +226,109 @@ port_is_free() {
     ! ss -H -ltn "sport = :$port" 2>/dev/null | grep -q .
 }
 
-if ! command -v ss >/dev/null 2>&1; then
-    echo -e "${RED}Required port-inspection command 'ss' is unavailable.${RESET}" >&2
+create_optional_backup() {
+    local answer backup_root backup_dir
+    read -r -p "Create a persistent backup of existing node secrets and operator keyring first? (Y/n): " answer
+    answer=${answer:-Y}
+    [[ "$answer" =~ ^[Yy]$ ]] || { echo "Persistent backup skipped by operator choice."; return 0; }
+    backup_root="$HOME/gnoland-backups"
+    backup_dir="$backup_root/$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$backup_dir"
+    if [ -d "$GNOLAND_MAINNET_HOME/secrets" ]; then
+        tar -czf "$backup_dir/node-secrets.tar.gz" -C "$GNOLAND_MAINNET_HOME" secrets
+        chmod 600 "$backup_dir/node-secrets.tar.gz"
+    fi
+    if [ -d "$GNOKEY_HOME" ] && [ -n "$(find "$GNOKEY_HOME" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+        tar -czf "$backup_dir/operator-keyring.tar.gz" -C "$(dirname "$GNOKEY_HOME")" "$(basename "$GNOKEY_HOME")"
+        chmod 600 "$backup_dir/operator-keyring.tar.gz"
+    fi
+    echo -e "${GREEN}Persistent backup created under $backup_dir${RESET}"
+}
+
+configure_ufw_safely() {
+    local ssh_port="" confirm
+    [[ "$SETUP_UFW" =~ ^[Yy]$ ]] || return 0
+    if [[ "${SSH_CONNECTION:-}" =~ ^[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+([0-9]+)$ ]]; then
+        ssh_port=${BASH_REMATCH[1]}
+    fi
+    if [ -z "$ssh_port" ] && command -v sshd >/dev/null 2>&1; then
+        ssh_port=$(sudo sshd -T 2>/dev/null | awk '$1=="port" {print $2; exit}' || true)
+    fi
+    while [[ ! "$ssh_port" =~ ^[0-9]+$ ]] || [ "$ssh_port" -lt 1 ] || [ "$ssh_port" -gt 65535 ]; do
+        read -r -p "Enter the SSH port that must remain reachable before enabling UFW: " ssh_port
+    done
+    echo -e "${YELLOW}UFW preview:${RESET} allow SSH ${ssh_port}/tcp and Gnoland P2P ${GNOLAND_P2P_PORT}/tcp; RPC/ABCI remain loopback."
+    read -r -p "Type ENABLE-UFW to apply these rules and enable UFW, or press Enter to skip: " confirm
+    [ "$confirm" = "ENABLE-UFW" ] || { echo "UFW setup skipped."; return 0; }
+    sudo apt install -y ufw
+    sudo ufw allow "${ssh_port}/tcp" comment "SSH Access"
+    sudo ufw allow "${GNOLAND_P2P_PORT}/tcp" comment "Gno.land gnoland-1 P2P"
+    sudo ufw --force enable
+    sudo ufw status verbose
+}
+
+if [ -n "${SUDO_USER:-}" ]; then
+    echo -e "${RED}Run Valley of Gnoland as the node OS user, not with sudo.${RESET}" >&2
     false
 fi
-service_belongs_to_instance
+if [ "$(realpath -m "$GENESIS_FILE")" != "$(realpath -m "$GNOLAND_DEPLOYMENT_DIR/genesis.json")" ]; then
+    echo -e "${RED}Mainnet genesis must be stored under $GNOLAND_DEPLOYMENT_DIR.${RESET}" >&2
+    false
+fi
+for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOKEY_HOME" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
+    path_is_under_home "$instance_path" || { echo -e "${RED}Unsafe instance path outside $HOME: $instance_path${RESET}" >&2; false; }
+done
 
-if [ -z "$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)" ]; then
-    while ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; do
-        echo -e "${RED}Port prefix $GNOLAND_PORT conflicts with a running listener.${RESET}"
-        read -r -p "Enter another two-digit port prefix: " GNOLAND_PORT
-        if [[ ! "$GNOLAND_PORT" =~ ^[0-9]{2}$ ]] || [ "$((10#$GNOLAND_PORT))" -lt 1 ] || [ "$((10#$GNOLAND_PORT))" -gt 64 ]; then
-            echo -e "${RED}Port prefix must be two digits from 01 through 64, for example 26 or 36.${RESET}"
-            continue
-        fi
-        GNOLAND_RPC_PORT="${GNOLAND_PORT}657"
-        GNOLAND_P2P_PORT="${GNOLAND_PORT}656"
-        GNOLAND_ABCI_PORT="${GNOLAND_PORT}658"
-    done
+case "$(realpath -m "$GNOLAND_MAINNET_HOME")" in
+    "$(realpath -m "$GNO_SOURCE_DIR")"/*) NODE_HOME_INSIDE_SOURCE=true ;;
+esac
+
+echo -e "\n--- Gno.land gnoland-1 Node Setup ---"
+echo "  Network:          $CHAIN_ID"
+echo "  Source commit:    $SOURCE_COMMIT"
+echo "  Asset version:    $ASSET_VERSION"
+echo "  Source / GNOROOT: $GNO_SOURCE_DIR"
+echo "  Node data:        $GNOLAND_MAINNET_HOME"
+echo "  Operator keyring: $GNOKEY_HOME"
+
+while :; do
+    read -r -p "Enter your GNOLAND_MONIKER: " GNOLAND_MONIKER
+    [ -n "$GNOLAND_MONIKER" ] && break
+    echo -e "${RED}Moniker is required.${RESET}"
+done
+while :; do
+    read -r -p "Enter preferred port prefix (leave empty for default 26): " GNOLAND_PORT
+    GNOLAND_PORT=${GNOLAND_PORT:-26}
+    if [[ "$GNOLAND_PORT" =~ ^[0-9]{2}$ ]] && [ "$((10#$GNOLAND_PORT))" -ge 1 ] && [ "$((10#$GNOLAND_PORT))" -le 64 ]; then break; fi
+    echo -e "${RED}Port prefix must be two digits from 01 through 64.${RESET}"
+done
+read -r -p "Enter public external address host/IP for P2P (optional): " GNOLAND_EXTERNAL_HOST
+read -r -p "Configure UFW firewall rules for Gnoland? (y/n, default n): " SETUP_UFW
+SETUP_UFW=${SETUP_UFW:-n}
+while :; do
+    if [ -z "${GNOLAND_MAINNET_SERVICE_NAME:-}" ]; then
+        read -r -p "Enter service name (default 'gnoland'): " GNOLAND_MAINNET_SERVICE_NAME
+        GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME:-gnoland}
+    fi
+    GNOLAND_MAINNET_SERVICE_NAME=${GNOLAND_MAINNET_SERVICE_NAME%.service}
+    [[ "$GNOLAND_MAINNET_SERVICE_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9_.@-]*$ ]] && break
+    GNOLAND_MAINNET_SERVICE_NAME=""
+done
+
+SERVICE_FILE="/etc/systemd/system/${GNOLAND_MAINNET_SERVICE_NAME}.service"
+GNOLAND_RPC_PORT="${GNOLAND_PORT}657"
+GNOLAND_P2P_PORT="${GNOLAND_PORT}656"
+GNOLAND_ABCI_PORT="${GNOLAND_PORT}658"
+service_belongs_to_instance
+EXISTING_SERVICE_FILE=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
+if [ -n "$EXISTING_SERVICE_FILE" ] && systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME"; then SERVICE_WAS_ACTIVE=true; fi
+EXISTING_NODE_STATE=""
+if [ -d "$GNOLAND_MAINNET_HOME" ]; then EXISTING_NODE_STATE=$(find "$GNOLAND_MAINNET_HOME" -mindepth 1 -print -quit 2>/dev/null || true); fi
+if [ -n "$EXISTING_NODE_STATE" ] || [ -f "$GENESIS_FILE" ]; then
+    if [ -z "$EXISTING_SERVICE_FILE" ] || [ ! -f "$EXISTING_SERVICE_FILE" ] || ! grep -Fq -- "--chainid $CHAIN_ID" "$EXISTING_SERVICE_FILE"; then
+        echo -e "${RED}Destructive reinstall refused: existing node identity is not explicitly configured for $CHAIN_ID.${RESET}" >&2
+        false
+    fi
 fi
 
 echo
@@ -178,188 +336,126 @@ echo -e "${YELLOW}Operator key choice:${RESET}"
 echo "1. Reuse an existing local operator key"
 echo "2. Recover an operator key from its mnemonic"
 echo "3. Create a new operator key"
-while :; do
-    read -r -p "Choose 1, 2, or 3: " OPERATOR_KEY_ACTION
-    [[ "$OPERATOR_KEY_ACTION" =~ ^[123]$ ]] && break
-    echo -e "${RED}Invalid operator key choice. Please try again.${RESET}"
-done
+while :; do read -r -p "Choose 1, 2, or 3: " OPERATOR_KEY_ACTION; [[ "$OPERATOR_KEY_ACTION" =~ ^[123]$ ]] && break; done
 
 echo
 echo -e "${YELLOW}Installation preview:${RESET}"
 echo "  Network:          $CHAIN_ID"
-echo "  Release:          $RELEASE_TAG ($RELEASE_COMMIT)"
+echo "  Asset version:    $ASSET_VERSION"
 echo "  OS user:          $OS_USER"
 echo "  Service:          ${GNOLAND_MAINNET_SERVICE_NAME}.service"
-echo "  Binary directory: $HOME/go/bin"
 echo "  Source / GNOROOT: $GNO_SOURCE_DIR"
 echo "  Node data:        $GNOLAND_MAINNET_HOME"
-echo "  Operator keyring: $GNOKEY_HOME"
 echo "  P2P/RPC/ABCI:     $GNOLAND_P2P_PORT / $GNOLAND_RPC_PORT / $GNOLAND_ABCI_PORT"
-echo
-echo -e "${YELLOW}This replaces Valley node data under $GNOLAND_MAINNET_HOME after the backup step.${RESET}"
-echo "The local keyring at $GNOKEY_HOME is preserved."
-read -r -p "Type INSTALL-GNOLAND-1 to continue: " CONFIRM
-if [ "$CONFIRM" != "INSTALL-GNOLAND-1" ]; then
-    echo "Installation cancelled."
-    exit 0
-fi
-
-# A reinstall is destructive. Never replace an unknown existing node: only an
-# explicitly configured gnoland-1 service may be replaced by this path.
-EXISTING_SERVICE_FILE=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p FragmentPath --value 2>/dev/null || true)
-EXISTING_NODE_STATE=""
-if [ -d "$GNOLAND_MAINNET_HOME" ]; then
-    EXISTING_NODE_STATE=$(find "$GNOLAND_MAINNET_HOME" -mindepth 1 -print -quit 2>/dev/null || true)
-fi
-if [ -n "$EXISTING_NODE_STATE" ] || [ -f "$GENESIS_FILE" ]; then
-    if [ -z "$EXISTING_SERVICE_FILE" ] || [ ! -f "$EXISTING_SERVICE_FILE" ] || \
-        ! grep -Fq -- "--chainid $CHAIN_ID" "$EXISTING_SERVICE_FILE"; then
-        echo -e "${RED}Destructive reinstall refused: existing node identity is not explicitly configured for $CHAIN_ID.${RESET}" >&2
-        echo "Remove or review the existing instance manually, then rerun with the correct service configuration." >&2
-        false
-    fi
-fi
-
-mkdir -p "$BACKUP_DIR"
-CURRENT_STAGE="backup existing node secrets and keyring"
-if [ -d "$GNOLAND_MAINNET_HOME/secrets" ]; then
-    tar -czf "$BACKUP_DIR/node-secrets.tar.gz" -C "$GNOLAND_MAINNET_HOME" secrets
-    chmod 600 "$BACKUP_DIR/node-secrets.tar.gz"
-    echo -e "${GREEN}Backed up node secrets to $BACKUP_DIR/node-secrets.tar.gz${RESET}"
-fi
-if [ -d "$GNOKEY_HOME" ] && [ -n "$(find "$GNOKEY_HOME" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-    tar -czf "$BACKUP_DIR/operator-keyring.tar.gz" -C "$(dirname "$GNOKEY_HOME")" "$(basename "$GNOKEY_HOME")"
-    chmod 600 "$BACKUP_DIR/operator-keyring.tar.gz"
-    echo -e "${GREEN}Backed up operator keyring to $BACKUP_DIR/operator-keyring.tar.gz${RESET}"
-fi
-
-sudo systemctl stop "$GNOLAND_MAINNET_SERVICE_NAME" 2>/dev/null || true
-if ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; then
-    echo -e "${RED}Selected ports remain occupied after stopping ${GNOLAND_MAINNET_SERVICE_NAME}.service.${RESET}" >&2
-    false
-fi
-sudo systemctl disable "$GNOLAND_MAINNET_SERVICE_NAME" 2>/dev/null || true
-sudo rm -f "$SERVICE_FILE"
-rm -rf "$GNOLAND_MAINNET_HOME"
-rm -f "$GENESIS_FILE"
-sed -i '/^export GNOLAND_CHAIN_ID=/d;/^export GNOLAND_MAINNET_HOME=/d;/^export GNOLAND_MAINNET_SERVICE_NAME=/d;/^export GNOLAND_DEPLOYMENT_DIR=/d;/^export GNOLAND_GENESIS=/d;/^export GNOLAND_MONIKER=/d;/^export GNOLAND_PORT=/d;/^export GNOLAND_OPERATOR_KEY=/d;/^export GNOLAND_REMOTE=/d;/^export GNOLAND_PUBLIC_REMOTE=/d;/^export GNOKEY_HOME=/d;/^export GNO_SOURCE_DIR=/d;/^export GNOROOT=/d;/go\/bin/d' "$HOME/.bash_profile" 2>/dev/null || true
-
-CURRENT_STAGE="install release prerequisites"
-sudo apt update -y
-sudo apt install -y curl git jq ca-certificates
-if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
-    echo -e "${RED}The published mainnet assets are only verified for Linux amd64.${RESET}" >&2
-    false
-fi
-mkdir -p "$HOME/go/bin"
-
-CURRENT_STAGE="prepare pinned Gno source"
-echo -e "${CYAN}Preparing pinned ${SOURCE_BRANCH} source at ${SOURCE_COMMIT}.${RESET}"
-if [ ! -d "$GNO_SOURCE_DIR/.git" ]; then
-    rm -rf "$GNO_SOURCE_DIR"
-    mkdir -p "$GNO_SOURCE_DIR"
-    git -C "$GNO_SOURCE_DIR" init
-fi
-if git -C "$GNO_SOURCE_DIR" remote get-url origin >/dev/null 2>&1; then
-    git -C "$GNO_SOURCE_DIR" remote set-url origin https://github.com/gnolang/gno.git
+if [ -n "$EXISTING_NODE_STATE" ]; then
+    echo -e "${YELLOW}Safe reinstall: existing validator/node secrets will be preserved exactly. Node database/config will be rebuilt.${RESET}"
 else
-    git -C "$GNO_SOURCE_DIR" remote add origin https://github.com/gnolang/gno.git
+    echo "Fresh install: new node secrets will be generated."
 fi
-release_tag_commit=$(git -C "$GNO_SOURCE_DIR" ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk 'NR == 1 {print $1}' || true)
-if [ "$release_tag_commit" != "$RELEASE_COMMIT" ]; then
-    echo -e "${RED}The $RELEASE_TAG tag does not match the pinned release commit.${RESET}" >&2
-    echo "Expected: $RELEASE_COMMIT" >&2
-    echo "Observed: ${release_tag_commit:-unavailable}" >&2
-    false
-fi
-git -C "$GNO_SOURCE_DIR" fetch --depth 1 origin "refs/heads/$SOURCE_BRANCH"
-if [ "$(git -C "$GNO_SOURCE_DIR" rev-parse FETCH_HEAD)" != "$SOURCE_COMMIT" ]; then
-    echo -e "${RED}The $SOURCE_BRANCH tip is not the pinned mainnet source commit.${RESET}" >&2
-    echo "Expected: $SOURCE_COMMIT" >&2
-    echo "Observed: $(git -C "$GNO_SOURCE_DIR" rev-parse FETCH_HEAD 2>/dev/null || echo unavailable)" >&2
-    false
-fi
-git -C "$GNO_SOURCE_DIR" checkout --detach --force "$SOURCE_COMMIT"
-if [ "$(git -C "$GNO_SOURCE_DIR" rev-parse HEAD)" != "$SOURCE_COMMIT" ]; then
-    echo -e "${RED}Unexpected Gno source commit at $GNO_SOURCE_DIR.${RESET}" >&2
+read -r -p "Type INSTALL-GNOLAND-1 to continue: " CONFIRM
+[ "$CONFIRM" = "INSTALL-GNOLAND-1" ] || { echo "Installation cancelled."; exit 0; }
+
+CURRENT_STAGE="install prerequisites before cutover"
+sudo apt update -y
+sudo apt install -y curl git jq ca-certificates gzip iproute2
+if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
+    echo -e "${RED}Only Linux amd64 is verified for these assets.${RESET}" >&2
     false
 fi
 
-if [ ! -d "$GNOLAND_DEPLOYMENT_DIR" ]; then
-    echo -e "${RED}Mainnet deployment path is missing from the pinned source: $GNOLAND_DEPLOYMENT_DIR${RESET}" >&2
-    false
+if [ -z "$EXISTING_SERVICE_FILE" ]; then
+    while ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; do
+        echo -e "${RED}Port prefix $GNOLAND_PORT conflicts with a running listener.${RESET}"
+        read -r -p "Enter another two-digit port prefix: " GNOLAND_PORT
+        if [[ "$GNOLAND_PORT" =~ ^[0-9]{2}$ ]] && [ "$((10#$GNOLAND_PORT))" -ge 1 ] && [ "$((10#$GNOLAND_PORT))" -le 64 ]; then
+            GNOLAND_RPC_PORT="${GNOLAND_PORT}657"; GNOLAND_P2P_PORT="${GNOLAND_PORT}656"; GNOLAND_ABCI_PORT="${GNOLAND_PORT}658"
+        fi
+    done
 fi
 
+CURRENT_STAGE="stage all reviewed artifacts before cutover"
+check_upstream_release_drift
 TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
+mkdir -p "$TMP_DIR/stage-source"
+git -C "$TMP_DIR/stage-source" init -q
+git -C "$TMP_DIR/stage-source" remote add origin https://github.com/gnolang/gno.git
+release_tag_commit=$(git -C "$TMP_DIR/stage-source" ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk 'NR==1 {print $1}' || true)
+[ "$release_tag_commit" = "$RELEASE_COMMIT" ] || { echo "The $RELEASE_TAG tag moved from the reviewed commit." >&2; false; }
+branch_tip=$(git -C "$TMP_DIR/stage-source" ls-remote --refs origin "refs/heads/$SOURCE_BRANCH" | awk 'NR==1 {print $1}' || true)
+if [ -n "$branch_tip" ] && [ "$branch_tip" != "$SOURCE_COMMIT" ]; then
+    echo -e "${YELLOW}Upstream $SOURCE_BRANCH tip is $branch_tip; installing reviewed pin $SOURCE_COMMIT.${RESET}"
+fi
+git -C "$TMP_DIR/stage-source" fetch --depth 1 origin "$SOURCE_COMMIT" >/dev/null
+git -C "$TMP_DIR/stage-source" checkout --detach --force "$SOURCE_COMMIT" >/dev/null
+[ "$(git -C "$TMP_DIR/stage-source" rev-parse HEAD)" = "$SOURCE_COMMIT" ]
+[ -d "$TMP_DIR/stage-source/misc/deployments/mainnet.gno.land" ] || { echo "Pinned source lacks mainnet deployment files." >&2; false; }
 
-download_verified_asset() {
-    local url=$1 expected_sha=$2 output=$3 label=$4
-    curl -fsSL "$url" -o "$output"
-    printf '%s  %s\n' "$expected_sha" "$output" | sha256sum --check - >/dev/null
-    chmod 0755 "$output"
-    echo -e "${GREEN}Verified $label SHA-256: $expected_sha${RESET}"
-}
+curl -fsSL "$RELEASE_ASSET_BASE_URL/$GNOLAND_ASSET" -o "$TMP_DIR/gnoland"
+printf '%s  %s\n' "$GNOLAND_ASSET_SHA256" "$TMP_DIR/gnoland" | sha256sum --check - >/dev/null
+chmod 0755 "$TMP_DIR/gnoland"
+verify_reported_version "$TMP_DIR/gnoland" "$GNOLAND_ASSET" gnoland
+curl -fsSL "$RELEASE_ASSET_BASE_URL/$GNOKEY_ASSET" -o "$TMP_DIR/gnokey"
+printf '%s  %s\n' "$GNOKEY_ASSET_SHA256" "$TMP_DIR/gnokey" | sha256sum --check - >/dev/null
+chmod 0755 "$TMP_DIR/gnokey"
+verify_reported_version "$TMP_DIR/gnokey" "$GNOKEY_ASSET" gnokey
+curl -fsSL "$GENESIS_GZ_URL" -o "$TMP_DIR/genesis.json.gz"
+printf '%s  %s\n' "$GENESIS_GZ_SHA256" "$TMP_DIR/genesis.json.gz" | sha256sum --check - >/dev/null
+gzip -dc "$TMP_DIR/genesis.json.gz" > "$TMP_DIR/genesis.json"
+printf '%s  %s\n' "$GENESIS_SHA256" "$TMP_DIR/genesis.json" | sha256sum --check - >/dev/null
 
-CURRENT_STAGE="download and verify mainnet release assets"
-download_verified_asset "$RELEASE_ASSET_BASE_URL/$GNOLAND_ASSET" "$GNOLAND_ASSET_SHA256" "$TMP_DIR/gnoland" "$GNOLAND_ASSET"
-download_verified_asset "$RELEASE_ASSET_BASE_URL/$GNOKEY_ASSET" "$GNOKEY_ASSET_SHA256" "$TMP_DIR/gnokey" "$GNOKEY_ASSET"
+echo -e "${GREEN}All source, binary, and genesis artifacts are staged and verified. Live node has not been modified yet.${RESET}"
+create_optional_backup
 
-CURRENT_STAGE="install verified mainnet binaries"
-mkdir -p "$(dirname "$GNOLAND_BIN")" "$(dirname "$GNOKEY_BIN")"
+ROLLBACK_ROOT="$HOME/.gnoland-mainnet-install-rollback-$(date +%Y%m%d-%H%M%S)-$$"
+mkdir -p "$ROLLBACK_ROOT"
+[ -f "$HOME/.bash_profile" ] && { cp -p "$HOME/.bash_profile" "$ROLLBACK_ROOT/bash_profile"; OLD_PROFILE_PRESENT=true; }
+[ -x "$GNOLAND_BIN" ] && { cp -p "$GNOLAND_BIN" "$ROLLBACK_ROOT/gnoland"; OLD_GNOLAND_PRESENT=true; }
+[ -x "$GNOKEY_BIN" ] && { cp -p "$GNOKEY_BIN" "$ROLLBACK_ROOT/gnokey"; OLD_GNOKEY_PRESENT=true; }
+[ -f "$SERVICE_FILE" ] && { sudo cp "$SERVICE_FILE" "$ROLLBACK_ROOT/service"; sudo chown "$OS_USER":"$(id -gn)" "$ROLLBACK_ROOT/service"; OLD_SERVICE_PRESENT=true; }
+
+CURRENT_STAGE="atomic install cutover"
+CUTOVER_STARTED=true
+sudo systemctl stop "$GNOLAND_MAINNET_SERVICE_NAME" 2>/dev/null || true
+if $NODE_HOME_INSIDE_SOURCE; then
+    if [ -d "$GNO_SOURCE_DIR" ]; then mv "$GNO_SOURCE_DIR" "$ROLLBACK_ROOT/source"; OLD_SOURCE_PRESENT=true; fi
+else
+    if [ -d "$GNOLAND_MAINNET_HOME" ]; then mv "$GNOLAND_MAINNET_HOME" "$ROLLBACK_ROOT/node-data"; OLD_EXTERNAL_NODE_PRESENT=true; fi
+    if [ -d "$GNO_SOURCE_DIR" ]; then mv "$GNO_SOURCE_DIR" "$ROLLBACK_ROOT/source"; OLD_SOURCE_PRESENT=true; fi
+fi
+SOURCE_CUTOVER_ATTEMPTED=true
+mkdir -p "$(dirname "$GNO_SOURCE_DIR")"
+cp -a "$TMP_DIR/stage-source" "$GNO_SOURCE_DIR"
+mkdir -p "$GNOLAND_DEPLOYMENT_DIR" "$HOME/go/bin" "$GNOKEY_HOME"
 install -m 0755 "$TMP_DIR/gnoland" "$GNOLAND_BIN"
 install -m 0755 "$TMP_DIR/gnokey" "$GNOKEY_BIN"
-if [ ! -x "$GNOLAND_BIN" ] || [ ! -x "$GNOKEY_BIN" ]; then
-    echo -e "${RED}Verified mainnet assets were not installed as executable commands.${RESET}" >&2
-    false
-fi
+install -m 0644 "$TMP_DIR/genesis.json" "$GENESIS_FILE"
 printf '%s  %s\n' "$GNOLAND_ASSET_SHA256" "$GNOLAND_BIN" | sha256sum --check - >/dev/null
 printf '%s  %s\n' "$GNOKEY_ASSET_SHA256" "$GNOKEY_BIN" | sha256sum --check - >/dev/null
+printf '%s  %s\n' "$GENESIS_SHA256" "$GENESIS_FILE" | sha256sum --check - >/dev/null
 export GNOROOT
 export PATH="$HOME/go/bin:$PATH"
 hash -r
-if [ "$(command -v gnoland)" != "$GNOLAND_BIN" ] || [ "$(command -v gnokey)" != "$GNOKEY_BIN" ]; then
-    echo -e "${RED}Per-user commands do not resolve to $HOME/go/bin.${RESET}" >&2
-    false
-fi
-mkdir -p "$GNOKEY_HOME"
 
 operator_key_exists() {
-    "$GNOKEY_BIN" -home "$GNOKEY_HOME" list 2>/dev/null | awk -v key="$1" '$2 == key { found=1 } END { exit !found }'
+    "$GNOKEY_BIN" -home "$GNOKEY_HOME" list 2>/dev/null | awk -v key="$1" '$2 == key {found=1} END {exit !found}'
 }
-
 CURRENT_STAGE="select or recover operator key"
 case "$OPERATOR_KEY_ACTION" in
     1)
-        echo -e "${CYAN}Existing local operator keys:${RESET}"
         LOCAL_KEYS=$("$GNOKEY_BIN" -home "$GNOKEY_HOME" list || true)
         if [ -z "$LOCAL_KEYS" ]; then
-            echo -e "${RED}No readable local key found. Choose recovery or new-key installation.${RESET}"
-            while :; do
-                read -r -p "Choose 2 to recover or 3 for a new key: " OPERATOR_KEY_ACTION
-                [[ "$OPERATOR_KEY_ACTION" =~ ^[23]$ ]] && break
-                echo -e "${RED}Invalid choice. Please enter 2 or 3.${RESET}"
-            done
+            while :; do read -r -p "No local key found. Choose 2 to recover or 3 for a new key: " OPERATOR_KEY_ACTION; [[ "$OPERATOR_KEY_ACTION" =~ ^[23]$ ]] && break; done
         else
             echo "$LOCAL_KEYS"
-            while :; do
-                read -r -p "Type the existing key name to reuse: " OPERATOR_KEY_NAME
-                if [ -n "$OPERATOR_KEY_NAME" ] && operator_key_exists "$OPERATOR_KEY_NAME"; then break; fi
-                echo -e "${RED}That key was not found. Please enter an existing key name.${RESET}"
-            done
+            while :; do read -r -p "Type the existing key name to reuse: " OPERATOR_KEY_NAME; [ -n "$OPERATOR_KEY_NAME" ] && operator_key_exists "$OPERATOR_KEY_NAME" && break; done
         fi
         ;;
 esac
-
 case "$OPERATOR_KEY_ACTION" in
     2)
         read -r -p "Enter key name for the recovered operator (default 'operator'): " OPERATOR_KEY_NAME
         OPERATOR_KEY_NAME=${OPERATOR_KEY_NAME:-operator}
-        if operator_key_exists "$OPERATOR_KEY_NAME"; then
-            echo -e "${YELLOW}Key '$OPERATOR_KEY_NAME' already exists; reusing it without overwrite.${RESET}"
-        else
-            "$GNOKEY_BIN" -home "$GNOKEY_HOME" add -recover "$OPERATOR_KEY_NAME"
-        fi
+        operator_key_exists "$OPERATOR_KEY_NAME" || "$GNOKEY_BIN" -home "$GNOKEY_HOME" add -recover "$OPERATOR_KEY_NAME"
         ;;
     3)
         read -r -p "Enter new key name (default 'operator'): " OPERATOR_KEY_NAME
@@ -372,25 +468,29 @@ case "$OPERATOR_KEY_ACTION" in
         fi
         ;;
 esac
-
-if [ -z "${OPERATOR_KEY_NAME:-}" ]; then
-    echo -e "${RED}No operator key was selected.${RESET}" >&2
-    false
-fi
-echo -e "${GREEN}Operator key selected: $OPERATOR_KEY_NAME${RESET}"
-"$GNOKEY_BIN" -home "$GNOKEY_HOME" list
+[ -n "${OPERATOR_KEY_NAME:-}" ] || { echo "No operator key selected." >&2; false; }
 
 cd "$GNO_SOURCE_DIR"
-CURRENT_STAGE="initialise gnoland config and node secrets"
+CURRENT_STAGE="initialize config while preserving validator identity"
 CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
+if ! $NODE_HOME_INSIDE_SOURCE; then EXTERNAL_NODE_RUNTIME_STARTED=true; fi
+mkdir -p "$GNOLAND_MAINNET_HOME"
 "$GNOLAND_BIN" config init -force --config-path "$CONFIG_FILE"
-"$GNOLAND_BIN" secrets init -force --data-dir "$GNOLAND_MAINNET_HOME/secrets"
-
-CURRENT_STAGE="download and verify release genesis"
-mkdir -p "$GNOLAND_DEPLOYMENT_DIR"
-curl -fsSL "$GENESIS_URL" -o "$GENESIS_FILE"
-printf '%s  %s\n' "$GENESIS_SHA256" "$GENESIS_FILE" | sha256sum --check -
-echo -e "${GREEN}Verified mainnet genesis SHA-256: $GENESIS_SHA256${RESET}"
+PRESERVED_SECRETS=""
+if $OLD_SOURCE_PRESENT && $NODE_HOME_INSIDE_SOURCE; then
+    old_relative_home=$(realpath --relative-to="$GNO_SOURCE_DIR" "$GNOLAND_MAINNET_HOME")
+    [ -d "$ROLLBACK_ROOT/source/$old_relative_home/secrets" ] && PRESERVED_SECRETS="$ROLLBACK_ROOT/source/$old_relative_home/secrets"
+elif $OLD_EXTERNAL_NODE_PRESENT && [ -d "$ROLLBACK_ROOT/node-data/secrets" ]; then
+    PRESERVED_SECRETS="$ROLLBACK_ROOT/node-data/secrets"
+fi
+if [ -n "$PRESERVED_SECRETS" ]; then
+    rm -rf "$GNOLAND_MAINNET_HOME/secrets"
+    cp -a "$PRESERVED_SECRETS" "$GNOLAND_MAINNET_HOME/secrets"
+    echo -e "${GREEN}Preserved existing validator/node secrets exactly for safe reinstall.${RESET}"
+else
+    "$GNOLAND_BIN" secrets init -force --data-dir "$GNOLAND_MAINNET_HOME/secrets"
+    echo -e "${GREEN}Generated fresh node secrets for a fresh installation.${RESET}"
+fi
 
 CURRENT_STAGE="apply gnoland-1 configuration"
 "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" moniker "$GNOLAND_MONIKER"
@@ -406,17 +506,9 @@ CURRENT_STAGE="apply gnoland-1 configuration"
 "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" p2p.flush_throttle_timeout 10ms
 "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" mempool.size 10000
 "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" p2p.max_num_outbound_peers 40
-if [ -n "$GNOLAND_EXTERNAL_HOST" ]; then
-    "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" p2p.external_address "${GNOLAND_EXTERNAL_HOST}:${GNOLAND_P2P_PORT}"
-fi
+if [ -n "$GNOLAND_EXTERNAL_HOST" ]; then "$GNOLAND_BIN" config set --config-path "$CONFIG_FILE" p2p.external_address "${GNOLAND_EXTERNAL_HOST}:${GNOLAND_P2P_PORT}"; fi
 
-if [[ "$SETUP_UFW" =~ ^[Yy]$ ]]; then
-    sudo apt install -y ufw
-    sudo ufw allow 22/tcp comment "SSH Access"
-    sudo ufw allow "${GNOLAND_P2P_PORT}/tcp" comment "Gno.land gnoland-1 P2P"
-    sudo ufw --force enable
-    sudo ufw status verbose
-fi
+configure_ufw_safely
 
 sudo tee "$SERVICE_FILE" >/dev/null <<EOF_SERVICE
 [Unit]
@@ -440,59 +532,35 @@ LimitNPROC=65536
 WantedBy=multi-user.target
 EOF_SERVICE
 
-{
-    echo "export GNOLAND_MONIKER=\"$GNOLAND_MONIKER\""
-    echo "export GNOLAND_CHAIN_ID=\"$CHAIN_ID\""
-    echo "export GNOLAND_PORT=\"$GNOLAND_PORT\""
-    echo "export GNOLAND_MAINNET_HOME=\"$GNOLAND_MAINNET_HOME\""
-    echo "export GNOLAND_DEPLOYMENT_DIR=\"$GNOLAND_DEPLOYMENT_DIR\""
-    echo "export GNOLAND_GENESIS=\"$GENESIS_FILE\""
-    echo "export GNOKEY_HOME=\"$GNOKEY_HOME\""
-    echo "export GNOLAND_OPERATOR_KEY=\"$OPERATOR_KEY_NAME\""
-    echo "export GNO_SOURCE_DIR=\"$GNO_SOURCE_DIR\""
-    echo "export GNOROOT=\"$GNOROOT\""
-    echo 'export PATH="$HOME/go/bin:$PATH"'
-    echo "export GNOLAND_MAINNET_SERVICE_NAME=\"$GNOLAND_MAINNET_SERVICE_NAME\""
-    echo "export GNOLAND_REMOTE=\"http://127.0.0.1:${GNOLAND_RPC_PORT}\""
-    echo "export GNOLAND_PUBLIC_REMOTE=\"$PUBLIC_RPC\""
-} >> "$HOME/.bash_profile"
-
+write_profile_block
 sudo systemctl daemon-reload
-CURRENT_STAGE="start gnoland-1 service"
+CURRENT_STAGE="start and verify gnoland-1 service"
 sudo systemctl enable "$GNOLAND_MAINNET_SERVICE_NAME"
 sudo systemctl restart "$GNOLAND_MAINNET_SERVICE_NAME"
-
 echo -e "${CYAN}Waiting for the gnoland-1 RPC startup check (up to 90 seconds).${RESET}"
 RPC_STATUS=""
 for _ in $(seq 1 90); do
-    if ! systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME"; then break; fi
-    RPC_STATUS=$(curl -fsS "http://127.0.0.1:${GNOLAND_RPC_PORT}/status" 2>/dev/null || true)
-    if [ -n "$RPC_STATUS" ]; then break; fi
+    systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME" || break
+    RPC_STATUS=$(curl -m 2 -fsS "http://127.0.0.1:${GNOLAND_RPC_PORT}/status" 2>/dev/null || true)
+    [ -n "$RPC_STATUS" ] && break
     sleep 1
 done
-
 RPC_NETWORK=$(printf '%s' "$RPC_STATUS" | jq -r '.result.node_info.network // empty' 2>/dev/null || true)
-CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
 CONFIG_ABCI_PORT=$(sed -n 's/^proxy_app = "tcp:\/\/127\.0\.0\.1:\([0-9][0-9]*\)"$/\1/p' "$CONFIG_FILE")
 CONFIG_P2P_PORT=$(awk -F: '/^[[:space:]]*\[p2p\][[:space:]]*$/ {in_p2p=1; next} /^[[:space:]]*\[/ {in_p2p=0} in_p2p && /^[[:space:]]*laddr = "tcp:\/\// {gsub(/".*/, "", $NF); print $NF; exit}' "$CONFIG_FILE")
 CONFIG_RPC_PORT=$(awk -F: '/^[[:space:]]*\[rpc\][[:space:]]*$/ {in_rpc=1; next} /^[[:space:]]*\[/ {in_rpc=0} in_rpc && /^[[:space:]]*laddr = "tcp:\/\// {gsub(/".*/, "", $NF); print $NF; exit}' "$CONFIG_FILE")
-
 if systemctl is-active --quiet "$GNOLAND_MAINNET_SERVICE_NAME" && [ "$RPC_NETWORK" = "$CHAIN_ID" ] && [ "$CONFIG_ABCI_PORT" = "$GNOLAND_ABCI_PORT" ] && [ "$CONFIG_P2P_PORT" = "$GNOLAND_P2P_PORT" ] && [ "$CONFIG_RPC_PORT" = "$GNOLAND_RPC_PORT" ]; then
     echo -e "${GREEN}Gnoland service started successfully.${RESET}"
     echo "Verified RPC network: $RPC_NETWORK"
-    echo "Verified local ports: ABCI $CONFIG_ABCI_PORT, P2P $CONFIG_P2P_PORT, RPC $CONFIG_RPC_PORT"
-    echo "Local status: curl -fsSL http://127.0.0.1:${GNOLAND_RPC_PORT}/status | jq '.result.sync_info'"
-    echo "Backups created under: $BACKUP_DIR"
 else
-    echo -e "${RED}Gnoland failed the gnoland-1 RPC startup check.${RESET}"
-    echo "Expected RPC network: $CHAIN_ID"
-    echo "Observed RPC network: ${RPC_NETWORK:-unavailable}"
-    echo "Expected local ports: ABCI $GNOLAND_ABCI_PORT, P2P $GNOLAND_P2P_PORT, RPC $GNOLAND_RPC_PORT"
-    echo "Observed local ports: ABCI ${CONFIG_ABCI_PORT:-unavailable}, P2P ${CONFIG_P2P_PORT:-unavailable}, RPC ${CONFIG_RPC_PORT:-unavailable}"
     sudo systemctl status "$GNOLAND_MAINNET_SERVICE_NAME" --no-pager -l || true
     sudo journalctl -u "$GNOLAND_MAINNET_SERVICE_NAME" -n 100 --no-pager || true
     false
 fi
 
+CUTOVER_STARTED=false
+rm -rf "$ROLLBACK_ROOT"
+ROLLBACK_ROOT=""
 CURRENT_STAGE="complete"
+echo -e "${GREEN}Safe installation completed. Validator/node identity was preserved when an existing Valley mainnet node was detected.${RESET}"
 echo "Let's Buidl Gnoland Together"

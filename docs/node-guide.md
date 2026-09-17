@@ -14,6 +14,7 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 | Current `chain/mainnet` asset identity | `chain/mainnet.3435+139a63fe6` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
+| Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
 | RPC | `https://rpc.gno.land` |
 | Web | `https://gno.land` |
 | Faucet | none - mainnet has no public faucet |
@@ -34,11 +35,11 @@ The source checkout is pinned to the current `chain/mainnet` branch commit. The 
 
 ```bash
 git clone https://github.com/gnolang/gno.git "$HOME/gno"
-git -C "$HOME/gno" fetch --depth 1 origin refs/heads/chain/mainnet
+git -C "$HOME/gno" fetch --depth 1 origin 00417a1be97b9a311d9669ae7aa9585b277ee594
 git -C "$HOME/gno" checkout --detach --force 00417a1be97b9a311d9669ae7aa9585b277ee594
 ```
 
-Valley installs the official Linux amd64 release assets after checking their hashes. It does not substitute an unpinned source build.
+Valley fetches the exact reviewed commit instead of requiring it to remain the current branch tip. It reports later `chain/mainnet` branch movement as drift information. Valley installs the official Linux amd64 release assets after checking their hashes and reported version; it does not substitute an unpinned source build.
 
 The current `chain/mainnet` `gnoland` and `gnokey` assets both report
 `chain/mainnet.3435+139a63fe6`. Upstream also publishes `v1.2.0`, whose tag peels
@@ -48,10 +49,11 @@ validator guide, while retaining exact hashes to prevent silent asset drift.
 
 ## Genesis
 
-The release genesis URL is:
+Valley uses the official compressed release genesis for transfer efficiency:
 
 ```text
-https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json
+https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json.gz
+SHA-256: 32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9
 ```
 
 Store it at:
@@ -65,6 +67,8 @@ Verify:
 ```text
 ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0
 ```
+
+The installer/updater verifies both the compressed archive and the decompressed genesis before cutover.
 
 ## Valley service layout
 

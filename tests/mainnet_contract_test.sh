@@ -39,14 +39,14 @@ grep -Fq 'profile_value GNOLAND_MAINNET_SERVICE_NAME "gnoland"' "$DOCTOR" ||
     fail "VALLEY service metadata must remain gnoland.service"
 [ "$(jq -r '.components[0].service' "$VALLEY")" = 'gnoland.service' ] ||
     fail "VALLEY component service metadata must remain gnoland.service"
-if grep -Fq "sed -i '/GNOLAND_/d" "$INSTALLER" "$MAIN"; then
-    fail "mainnet profile cleanup still deletes every GNOLAND_* export"
-fi
-for cleanup_file in "$INSTALLER" "$MAIN"; do
-    grep -Fq '^export GNOLAND_MAINNET_HOME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_HOME in ${cleanup_file#$ROOT/}"
-    grep -Fq '^export GNOLAND_MAINNET_SERVICE_NAME=/d' "$cleanup_file" || fail "mainnet cleanup does not explicitly remove GNOLAND_MAINNET_SERVICE_NAME in ${cleanup_file#$ROOT/}"
-    if grep -Fq 'GNOLAND_TESTNET_HOME' "$cleanup_file" || grep -Fq 'GNOLAND_TESTNET_SERVICE_NAME' "$cleanup_file"; then
-        fail "mainnet cleanup may delete testnet-scoped exports in ${cleanup_file#$ROOT/}"
+for profile_file in "$INSTALLER" "$UPDATER" "$MAIN"; do
+    grep -Fq '# >>> GRAND VALLEY GNOLAND MAINNET >>>' "$profile_file" || fail "managed profile block start missing in ${profile_file#$ROOT/}"
+    grep -Fq '# <<< GRAND VALLEY GNOLAND MAINNET <<<' "$profile_file" || fail "managed profile block end missing in ${profile_file#$ROOT/}"
+    if grep -Fq "go\\/bin/d" "$profile_file"; then
+        fail "profile management still deletes arbitrary go/bin lines in ${profile_file#$ROOT/}"
+    fi
+    if grep -Fq 'GNOLAND_TESTNET_HOME' "$profile_file" || grep -Fq 'GNOLAND_TESTNET_SERVICE_NAME' "$profile_file"; then
+        fail "mainnet profile management may touch testnet-scoped exports in ${profile_file#$ROOT/}"
     fi
 done
 
@@ -57,6 +57,7 @@ facts=(
     '9c8eb132e483d6fd324d92c193e629ad65a98a37'
     'misc/deployments/mainnet.gno.land/'
     'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0'
+    '32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9'
     'ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3'
     '86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14'
     'https://rpc.gno.land'
@@ -74,17 +75,30 @@ for script in "$INSTALLER" "$UPDATER"; do
     grep -Fq 'SOURCE_BRANCH="chain/mainnet"' "$script" || fail "$script does not pin the mainnet source branch"
     grep -Fq 'SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"' "$script" || fail "$script does not pin the mainnet source commit"
     grep -Fq 'RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"' "$script" || fail "$script does not retain release tag metadata"
-    grep -Fq 'download_verified_asset' "$script" || fail "$script does not verify downloaded binary assets"
+    grep -Fq 'RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"' "$script" || fail "$script does not check upstream release metadata"
+    grep -Fq 'ASSET_VERSION="chain/mainnet.3435+139a63fe6"' "$script" || fail "$script does not verify the reviewed asset identity"
     grep -Fq 'GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"' "$script" || fail "$script does not verify the official mainnet genesis"
+    grep -Fq 'GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"' "$script" || fail "$script does not verify the compressed official mainnet genesis"
+    grep -Fq 'fetch --depth 1 origin "$SOURCE_COMMIT"' "$script" || fail "$script does not fetch the exact reviewed source commit"
+    if grep -Fq 'fetch --depth 1 origin "refs/heads/$SOURCE_BRANCH"' "$script"; then
+        fail "$script still makes branch-tip equality part of the runtime pin"
+    fi
 done
 
-grep -Fq 'git -C "$GNO_SOURCE_DIR" fetch --depth 1 origin "refs/heads/$SOURCE_BRANCH"' "$INSTALLER" || fail "installer does not pin the source branch"
-grep -Fq 'git -C "$GNO_SOURCE_DIR" fetch --depth 1 origin "refs/heads/$SOURCE_BRANCH"' "$UPDATER" || fail "updater does not pin the source branch"
 grep -Fq 'gnoland_linux_amd64' "$INSTALLER" || fail "installer asset name missing"
 grep -Fq 'gnokey_linux_amd64' "$INSTALLER" || fail "installer asset name missing"
 grep -Fq -- '--skip-genesis-sig-verification' "$INSTALLER" || fail "mainnet startup verification flag missing"
 grep -Fq 'INSTALL-GNOLAND-1' "$INSTALLER" || fail "explicit install confirmation missing"
 grep -Fq 'Destructive reinstall refused' "$INSTALLER" || fail "unknown existing node guard missing"
+grep -Fq 'Create a persistent backup of existing node secrets and operator keyring first? (Y/n): ' "$INSTALLER" || fail "optional persistent-backup prompt missing"
+grep -Fq 'Preserved existing validator/node secrets exactly for safe reinstall.' "$INSTALLER" || fail "safe reinstall identity preservation missing"
+grep -Fq 'All source, binary, and genesis artifacts are staged and verified. Live node has not been modified yet.' "$INSTALLER" || fail "stage-first install boundary missing"
+grep -Fq 'Type ENABLE-UFW to apply these rules and enable UFW' "$INSTALLER" || fail "explicit UFW confirmation missing"
+grep -Fq 'rollback_install()' "$INSTALLER" || fail "install rollback missing"
+grep -Fq 'rollback_update()' "$UPDATER" || fail "update rollback missing"
+grep -Fq 'Already up to date.' "$UPDATER" || fail "update no-op detection missing"
+grep -Fq 'wait_for_rpc_health()' "$UPDATER" || fail "post-update RPC health gate missing"
+grep -Fq 'Only gnokey changed; the running gnoland service was not restarted.' "$UPDATER" || fail "gnokey-only no-restart path missing"
 grep -Fq 'No verified gnoland-1 snapshot provider' "$SNAPSHOT" || fail "snapshot helper is not fail-closed"
 if grep -En 'curl|wget|lz4|tar|systemctl|pkill|rm -rf' "$SNAPSHOT"; then
     fail "snapshot helper contains mutation/download machinery despite closed gate"
@@ -103,6 +117,7 @@ fi
 [ "$(jq -r '.binary_assets.gnoland.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnoland reported version is wrong"
 [ "$(jq -r '.binary_assets.gnokey.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnokey reported version is wrong"
 [ "$(jq -r '.genesis.sha256' "$VERSIONS")" = 'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0' ] || fail "VERSIONS genesis hash is wrong"
+[ "$(jq -r '.genesis.compressed_sha256' "$VERSIONS")" = '32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9' ] || fail "VERSIONS compressed genesis hash is wrong"
 [ "$(jq -r '.endpoints.faucet' "$VERSIONS")" = 'null' ] || fail "VERSIONS must state that no faucet exists"
 [ "$(jq -r '.candidate_registration.status' "$VERSIONS")" = 'enabled' ] || fail "candidate registration is not enabled"
 [ "$(jq -r '.candidate_registration.candidate_realm' "$VERSIONS")" = 'r/gnops/valopers' ] || fail "candidate realm is wrong"
@@ -117,6 +132,8 @@ fi
 [ "$(jq -r '.public_launcher' "$VALLEY")" = 'direct' ] || fail "public launcher must be direct"
 [ "$(jq -r '.release.versioned_tag' "$VALLEY")" = 'v1.2.0' ] || fail "VALLEY versioned release tag is wrong"
 [ "$(jq -r '.install.reported_version' "$VALLEY")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VALLEY asset reported version is wrong"
+[ "$(jq -r '.install.persistent_backup' "$VALLEY")" = 'optional_prompt' ] || fail "VALLEY backup policy is wrong"
+[ "$(jq -r '.install.preserve_existing_node_secrets' "$VALLEY")" = 'true' ] || fail "VALLEY identity-preservation policy is missing"
 [ "$(jq -r '.endpoints.faucet' "$VALLEY")" = 'null' ] || fail "VALLEY must state that no faucet exists"
 
 active_files=("$ROOT/README.md" "$ROOT/VERSIONS.json" "$ROOT/VALLEY.json")
