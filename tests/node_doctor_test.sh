@@ -7,7 +7,7 @@ DOCTOR="$ROOT/resources/gnoland_node_doctor.sh"
 fail() { echo "NODE_DOCTOR_TEST_FAIL: $*" >&2; exit 1; }
 
 version=$(bash "$DOCTOR" --version)
-[ "$version" = 'Valley of Gnoland Node Doctor (gnoland-1) 1.1.0' ] || fail "unexpected version output"
+[ "$version" = 'Valley of Gnoland Node Doctor (gnoland-1) 1.2.0' ] || fail "unexpected version output"
 
 set +e
 GNOLAND_NODE_DOCTOR_REF=main bash "$DOCTOR" --version >/dev/null 2>&1
@@ -35,6 +35,13 @@ fi
 grep -Fq '"${GNOLAND_REMOTE%/}/net_info"' "$DOCTOR" || fail "live peer RPC probe missing"
 grep -Fq '.result.n_peers // empty' "$DOCTOR" || fail "live peer count parsing missing"
 grep -Fq 'local node reports zero live peers' "$DOCTOR" || fail "zero-peer warning missing"
+grep -Fq 'public_height=$(printf' "$DOCTOR" || fail "comparison RPC height parsing missing"
+grep -Fq 'record PASS height_gap "comparison RPC is $height_gap block(s) ahead of local node' "$DOCTOR" || fail "comparison-ahead height-gap report missing"
+grep -Fq 'record PASS height_gap "local node is $height_gap block(s) ahead of comparison RPC' "$DOCTOR" || fail "local-ahead height-gap report missing"
+grep -Fq 'observation only, no healthy-gap threshold is asserted' "$DOCTOR" || fail "height-gap observation boundary missing"
+if grep -Eq 'HEAD_GAP_LIMIT|MAX_HEIGHT_GAP|HEALTHY_GAP' "$DOCTOR"; then
+    fail "Node Doctor must not invent a mainnet healthy height-gap threshold"
+fi
 if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$DOCTOR"; then
     fail "stale endpoint or release wording remains in Node Doctor"
 fi
