@@ -59,7 +59,7 @@ The menu numbering and startup flow remain stable:
 | `1g` | Run the read-only Node Doctor. |
 | `2a` | List, recover, or create a local operator key without overwriting a named key. |
 | `2b` | Show the local consensus public key. |
-| `2c` | Register a mainnet valoper candidate through `r/gnops/valopers.Register` after sync, current-fee, local-key/address, input, preview, and explicit broadcast checks. |
+| `2c` | Register a mainnet valoper candidate through `r/gnops/valopers.Register` using the same user-facing input → preview → confirm → broadcast flow as Valley of Gnoland Testnet. |
 | `2d` | Run a manually supplied query or show verified mainnet links. |
 | `3a` | Restart the selected service. |
 | `3b` | Stop the selected service. |
@@ -77,8 +77,8 @@ The menu numbering and startup flow remain stable:
 - Never paste mnemonics or node secrets into chat or logs.
 - The key-management menu does not prove validator status. Option `2c` is a separate transaction flow and always shows the exact registration call before asking for broadcast confirmation.
 - Option `2c` uses the official mainnet parameters: `gno.land/r/gnops/valopers`, function `Register`, gas fee `1000000ugnot`, gas wanted `50000000`, chain ID `gnoland-1`, and `https://rpc.gno.land` as the remote.
-- The operator `g1...` address is derived directly from the selected local `gnokey` entry instead of being typed manually, so the signer and operator identity cannot accidentally diverge in the Valley flow.
-- Before collecting registration inputs, option `2c` queries `gno.land/r/sys/params.GetValoperRegisterFee()`. It proceeds only when the current on-chain registration fee is verified as zero; a nonzero or unreadable fee fails closed instead of inventing an unreviewed `--send` payment.
+- Matching the Testnet UX, option `2c` asks for the operator `g1...` address after the infrastructure type. Before preview/broadcast, Mainnet verifies that the entered address is controlled by the selected local `gnokey` entry.
+- On Mainnet, the normal user-facing sequence stays aligned with Testnet. Before preview/broadcast, option `2c` also verifies local sync and `gno.land/r/sys/params.GetValoperRegisterFee()`. It proceeds only when the current on-chain registration fee is verified as zero; a nonzero or unreadable fee fails closed instead of inventing an unreviewed `--send` payment.
 - Mainnet has no public faucet. The operator account must already hold enough GNOT to pay fees. Registration creates only a candidate profile; GovDAO approval through `r/sys/validators/v0` is still required for active-validator admission.
 - The snapshot helper does not download, stop, modify, or replace node data unless a verified provider is added and reviewed.
 

@@ -102,7 +102,7 @@ The branch commit and release tag commit are kept separate deliberately. The rel
 - Read-only Node Doctor with human and JSON output.
 - Read-only release-identity preflight for coordinated-upgrade review.
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
-- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with synced-node checks, transaction preview, and explicit broadcast confirmation.
+- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with the same user-facing registration sequence as Valley of Gnoland Testnet plus mainnet-specific pre-broadcast safety checks.
 
 ## Documentation
 
