@@ -19,6 +19,9 @@ readonly GNOLAND_BIN_SHA256="aa22a26823924642481fe7fc5e98eb9f42399b337f7afdac635
 readonly GNOKEY_BIN_SHA256="38018492bcaa4de2f146d0566daf6507d9e811ee28547b963a015f51f9b14511"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
+readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
+readonly VALOPER_GAS_FEE="1000000ugnot"
+readonly VALOPER_GAS_WANTED=50000000
 readonly VALLEY_RUNTIME_REF="ff364b7e69ab27be08ddc179860e87f135cae8da"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
 
@@ -170,7 +173,8 @@ ${GREEN}Key safety${RESET}
 - Keep operator mnemonics and node secrets offline. Review every transaction or destructive action yourself.
 
 ${GREEN}Scope${RESET}
-- This Valley installs and inspects a node. Validator admission and transaction broadcasting are not automated here.
+- This Valley installs and inspects a node. Option 2c can broadcast a validator-candidate registration only after explicit operator confirmation.
+- Candidate registration does not grant validator admission; GovDAO approval is still required for the active set.
 "
 
 ENDPOINTS="${GREEN}
@@ -189,6 +193,7 @@ ${GREEN}Network facts:${RESET}
 - Release genesis SHA256: ${CYAN}${GNOLAND_GENESIS_SHA256}${RESET}
 - gnoland Linux amd64 SHA256: ${CYAN}${GNOLAND_BIN_SHA256}${RESET}
 - gnokey Linux amd64 SHA256: ${CYAN}${GNOKEY_BIN_SHA256}${RESET}
+- Valoper candidate realm: ${CYAN}${GNOLAND_VALOPER_REALM}${RESET}
 - Active validator realm: ${CYAN}${GNOLAND_ACTIVE_REALM}${RESET}
 
 ${GREEN}Connect with Grand Valley:${RESET}
@@ -259,6 +264,19 @@ function gnokey_cmd() {
 function operator_key_exists() {
     gnokey -home "$GNOKEY_HOME" list 2>/dev/null |
         awk -v key="$1" '$2 == key { found=1 } END { exit !found }'
+}
+
+function operator_key_address() {
+    gnokey -home "$GNOKEY_HOME" list 2>/dev/null |
+        awk -v key="$1" '$2 == key && $5 == "addr:" { print $6; exit }'
+}
+
+function get_valoper_register_fee() {
+    local fee_output fee
+    fee_output=$(gnokey_cmd query vm/qeval -data 'gno.land/r/sys/params.GetValoperRegisterFee()' 2>/dev/null) || return 1
+    fee=$(printf '%s\n' "$fee_output" | grep -Eo '[0-9]+[[:space:]]+uint64' | head -n 1 | awk '{print $1}')
+    [[ "$fee" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$fee"
 }
 
 function get_rpc_port_from_remote() {
@@ -564,11 +582,167 @@ function show_validator_pubkey() {
 }
 
 function register_valoper_candidate() {
-    echo -e "${CYAN}Mainnet validator registration${RESET}"
-    echo -e "${YELLOW}This option is disabled. Active realm: $GNOLAND_ACTIVE_REALM${RESET}"
-    echo "No verified mainnet funding route, gas specification, or transaction procedure is configured."
-    echo "Mainnet has no public faucet."
-    echo "No transaction was prepared or broadcast."
+    local status_json local_network catching_up register_fee tx_output tx_status
+
+    echo -e "${CYAN}Register Gno.land Mainnet Valoper Candidate${RESET}"
+    echo -e "${YELLOW}This broadcasts a mainnet transaction. It creates a candidate profile only, not active validator status.${RESET}"
+    echo -e "${YELLOW}GovDAO approval is still required before the node can join ${GNOLAND_ACTIVE_REALM}.${RESET}"
+    echo "Mainnet has no public faucet. The operator account must already hold enough GNOT to pay fees."
+    echo "Official mainnet parameters: gas fee ${VALOPER_GAS_FEE}, gas wanted ${VALOPER_GAS_WANTED}."
+    if ! prompt_back_or_continue; then
+        return
+    fi
+
+    status_json=$(get_local_status_json)
+    local_network=$(echo "$status_json" | jq -r '.result.node_info.network // empty' 2>/dev/null)
+    catching_up=$(echo "$status_json" | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null)
+    if [ "$local_network" != "$GNOLAND_CHAIN_ID" ]; then
+        echo -e "${RED}Registration blocked: local RPC did not report ${GNOLAND_CHAIN_ID}.${RESET}"
+        echo "Confirm the selected node instance is running and healthy before registering."
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    if [ "$catching_up" != "false" ]; then
+        echo -e "${RED}Registration blocked: local node is not confirmed fully synced (catching_up=${catching_up:-unknown}).${RESET}"
+        echo -e "${YELLOW}Wait until option 1e reports a synced node, then retry.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+
+    if ! register_fee=$(get_valoper_register_fee); then
+        echo -e "${RED}Registration blocked: current on-chain valoper registration fee could not be verified.${RESET}"
+        echo "The tool will not guess a payment amount or broadcast an unverified paid call."
+        echo -e "${YELLOW}Re-check gno.land/r/sys/params.GetValoperRegisterFee() and the official mainnet validator guide, then retry.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    if [ "$register_fee" -ne 0 ]; then
+        echo -e "${RED}Registration blocked: the current on-chain valoper registration fee is ${register_fee} ugnot.${RESET}"
+        echo "This Valley only automates the verified zero-registration-fee flow and will not add an unreviewed --send payment."
+        echo -e "${YELLOW}Review the current official mainnet procedure before registering.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+
+    read -r -p "Enter operator key name (default 'operator'): " KEY_NAME
+    KEY_NAME=${KEY_NAME:-operator}
+    if ! operator_key_exists "$KEY_NAME"; then
+        echo -e "${RED}Operator key '$KEY_NAME' was not found in $GNOKEY_HOME.${RESET}"
+        echo -e "${YELLOW}Create/recover it with option 2a, then retry.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    OPERATOR_ADDR=$(operator_key_address "$KEY_NAME")
+    if [[ ! "$OPERATOR_ADDR" =~ ^g1[0-9a-z]+$ ]]; then
+        echo -e "${RED}Could not derive a valid operator g1... address from key '$KEY_NAME'.${RESET}"
+        echo -e "${YELLOW}Review 'gnokey -home $GNOKEY_HOME list' and retry.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    echo -e "${GREEN}Operator address from '$KEY_NAME': ${OPERATOR_ADDR}${RESET}"
+
+    read -r -p "Enter validator moniker: " MONIKER
+    read -r -p "Enter short validator description: " DESCRIPTION
+    if [ -z "$MONIKER" ] || [ "${#MONIKER}" -gt 32 ]; then
+        echo -e "${RED}Moniker must be non-empty and at most 32 characters.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    if [ -z "$DESCRIPTION" ] || [ "${#DESCRIPTION}" -gt 2048 ]; then
+        echo -e "${RED}Description must be non-empty and at most 2048 characters.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    read -r -p "Enter infrastructure type (cloud/on-prem/data-center): " INFRA_TYPE
+    case "$INFRA_TYPE" in
+        cloud|on-prem|data-center) ;;
+        *)
+            echo -e "${RED}Infrastructure type must be exactly: cloud, on-prem, or data-center.${RESET}"
+            echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+            read -r
+            menu
+            return
+            ;;
+    esac
+    read -r -p "Enter consensus gpub1... public key from option 2b: " CONSENSUS_PUBKEY
+
+    if [[ ! "$CONSENSUS_PUBKEY" =~ ^gpub1[0-9a-z]+$ ]]; then
+        echo -e "${RED}Consensus public key must be a lowercase gpub1... value.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+
+    echo -e "\n${YELLOW}Mainnet transaction preview:${RESET}"
+    cat <<EOF
+gnokey maketx call \
+  --pkgpath gno.land/${GNOLAND_VALOPER_REALM} \
+  --func Register \
+  --args "$MONIKER" \
+  --args "$DESCRIPTION" \
+  --args "$INFRA_TYPE" \
+  --args "$OPERATOR_ADDR" \
+  --args "$CONSENSUS_PUBKEY" \
+  --gas-fee $VALOPER_GAS_FEE --gas-wanted $VALOPER_GAS_WANTED \
+  --chainid $GNOLAND_CHAIN_ID \
+  --remote $GNOLAND_PUBLIC_REMOTE \
+  --broadcast \
+  $KEY_NAME
+EOF
+    echo -e "${YELLOW}The signer must control the operator address above or the realm will reject the call.${RESET}"
+    read -r -p $'\n\e[33mBroadcast this gnoland-1 registration transaction? (yes/no): \e[0m' confirm
+    if [[ "${confirm,,}" != "yes" ]]; then
+        echo "Cancelled."
+        menu
+        return
+    fi
+
+    tx_output=$(mktemp)
+    gnokey_cmd maketx call \
+        -pkgpath "gno.land/$GNOLAND_VALOPER_REALM" \
+        -func Register \
+        -args "$MONIKER" \
+        -args "$DESCRIPTION" \
+        -args "$INFRA_TYPE" \
+        -args "$OPERATOR_ADDR" \
+        -args "$CONSENSUS_PUBKEY" \
+        -gas-fee "$VALOPER_GAS_FEE" \
+        -gas-wanted "$VALOPER_GAS_WANTED" \
+        -chainid "$GNOLAND_CHAIN_ID" \
+        -broadcast \
+        "$KEY_NAME" 2>&1 | tee "$tx_output"
+    tx_status=${PIPESTATUS[0]}
+    rm -f "$tx_output"
+
+    if [ "$tx_status" -ne 0 ]; then
+        echo -e "\n${RED}Candidate registration failed. No success status was reported.${RESET}"
+        echo -e "${YELLOW}Review the transaction error above. Do not change gas or funding assumptions without re-checking the official mainnet validator guide.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+
+    echo -e "\n${GREEN}Candidate registration transaction broadcast succeeded.${RESET}"
+    echo "Candidate realm: gno.land/$GNOLAND_VALOPER_REALM"
+    echo -e "${YELLOW}Next gate: a GovDAO proposal must add the candidate to ${GNOLAND_ACTIVE_REALM}.${RESET}"
     echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
     read -r
     menu
@@ -690,7 +864,7 @@ function show_guidelines() {
     echo " - 1g Run the read-only Node Doctor"
     echo " - 2a Manage an operator key only after reviewing key safety"
     echo " - 3d Back up node secrets before maintenance"
-    echo -e "${YELLOW}Candidate registration and snapshot application remain disabled until their funding/provider facts are independently verified.${RESET}"
+    echo -e "${YELLOW}Mainnet candidate registration is enabled in option 2c using the verified upstream procedure. Snapshot application remains disabled until a provider is independently verified.${RESET}"
     echo
     echo -e "${GREEN}Node Interactions:${RESET}"
     echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and release assets, then starts gnoland-1."
@@ -743,7 +917,7 @@ function menu() {
     echo "2. Validator/Key Interactions"
     echo "   2a. Reuse/Recover/Create Operator Key"
     echo "   2b. Show Validator Consensus Pubkey"
-    echo "   2c. Mainnet Validator Registration (disabled)"
+    echo "   2c. Mainnet Validator Registration"
     echo "   2d. Query / Show Mainnet Links"
     echo
     echo "3. Node Management"

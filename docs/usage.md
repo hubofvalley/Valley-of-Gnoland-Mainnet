@@ -59,7 +59,7 @@ The menu numbering and startup flow remain stable:
 | `1g` | Run the read-only Node Doctor. |
 | `2a` | List, recover, or create a local operator key without overwriting a named key. |
 | `2b` | Show the local consensus public key. |
-| `2c` | Explain that candidate registration is disabled; no transaction is prepared or broadcast. |
+| `2c` | Register a mainnet valoper candidate through `r/gnops/valopers.Register` after sync, current-fee, local-key/address, input, preview, and explicit broadcast checks. |
 | `2d` | Run a manually supplied query or show verified mainnet links. |
 | `3a` | Restart the selected service. |
 | `3b` | Stop the selected service. |
@@ -75,8 +75,11 @@ The menu numbering and startup flow remain stable:
 - Review the source branch, release tag metadata, genesis checksum, binary hashes, and service path before installation or update.
 - RPC and ABCI listeners default to loopback; only the P2P listener is configured for public binding by default.
 - Never paste mnemonics or node secrets into chat or logs.
-- The key-management menu does not prove validator status or authorize a transaction.
-- Option `2c` is disabled until a verified mainnet funding route, gas specification, and registration procedure are available. Mainnet has no public faucet.
+- The key-management menu does not prove validator status. Option `2c` is a separate transaction flow and always shows the exact registration call before asking for broadcast confirmation.
+- Option `2c` uses the official mainnet parameters: `gno.land/r/gnops/valopers`, function `Register`, gas fee `1000000ugnot`, gas wanted `50000000`, chain ID `gnoland-1`, and `https://rpc.gno.land` as the remote.
+- The operator `g1...` address is derived directly from the selected local `gnokey` entry instead of being typed manually, so the signer and operator identity cannot accidentally diverge in the Valley flow.
+- Before collecting registration inputs, option `2c` queries `gno.land/r/sys/params.GetValoperRegisterFee()`. It proceeds only when the current on-chain registration fee is verified as zero; a nonzero or unreadable fee fails closed instead of inventing an unreviewed `--send` payment.
+- Mainnet has no public faucet. The operator account must already hold enough GNOT to pay fees. Registration creates only a candidate profile; GovDAO approval through `r/sys/validators/v0` is still required for active-validator admission.
 - The snapshot helper does not download, stop, modify, or replace node data unless a verified provider is added and reviewed.
 
 ## Verified endpoints
@@ -84,4 +87,5 @@ The menu numbering and startup flow remain stable:
 - Web: `https://gno.land`
 - RPC/comparison RPC: `https://rpc.gno.land`
 - Official persistent peers: `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656`
+- Valoper candidate realm: `r/gnops/valopers`
 - Active validator realm: `r/sys/validators/v0`

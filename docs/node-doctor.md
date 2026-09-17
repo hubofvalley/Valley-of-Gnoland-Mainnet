@@ -28,7 +28,7 @@ The doctor checks:
 
 The height comparison is deliberately observational. It reports the raw block difference against `https://rpc.gno.land` when both endpoints identify as `gnoland-1`, but it does not invent a healthy-gap threshold or treat the comparison RPC as a canonical network-head oracle.
 
-It does not change a node or infer validator admission. A candidate must use a separately verified mainnet funding and registration process; this Valley does not provide one.
+It does not change a node or infer validator admission. Candidate registration is handled separately by menu option `2c`; Node Doctor does not check operator funding, sign transactions, broadcast transactions, or determine GovDAO admission.
 
 ## Exit codes
 
