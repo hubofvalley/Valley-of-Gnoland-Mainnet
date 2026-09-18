@@ -38,6 +38,21 @@
       "reported_version": "chain/mainnet.3435+139a63fe6"
     }
   },
+  "versioned_binary_assets": {
+    "base_url": "https://github.com/gnolang/gno/releases/download/v1.2.0",
+    "platform": "linux_amd64",
+    "checksums_sha256": "3f79dc4102c5ad9dd37a6f53adb294f13797f73e1c856ff0f77b3d6773d62078",
+    "gnoland": {
+      "asset": "gnoland_linux_amd64",
+      "sha256": "02151e2f21988fa41e62fda0eab617fafc21c3c5fd2f51b0061c382f625e6813",
+      "reported_version": "v1.2.0"
+    },
+    "gnokey": {
+      "asset": "gnokey_linux_amd64",
+      "sha256": "b0ab64292328651928186715c438e224f9f77ca105400de8e7176d010483754a",
+      "reported_version": "v1.2.0"
+    }
+  },
   "endpoints": {
     "web": "https://gno.land",
     "rpc": "https://rpc.gno.land",
