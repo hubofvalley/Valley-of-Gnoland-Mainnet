@@ -8,7 +8,9 @@
   "public_launcher": "direct",
   "default_branch": "main",
   "entrypoint": "resources/valleyofGnoland.sh",
-  "services": ["gnoland.service"],
+  "services": [
+    "gnoland.service"
+  ],
   "components": [
     {
       "id": "gnoland",
@@ -25,12 +27,29 @@
         "peer_config",
         "key_management",
         "candidate_registration",
-        "read_only_diagnostics"
+        "read_only_diagnostics",
+        "account_dashboard",
+        "validator_identity_status",
+        "valoper_profile_management",
+        "validator_key_rotation",
+        "realm_query_inspector"
       ],
       "ports": [
-        { "role": "p2p", "default": "26656", "exposure": "public" },
-        { "role": "rpc", "default": "26657", "exposure": "loopback" },
-        { "role": "abci", "default": "26658", "exposure": "loopback" }
+        {
+          "role": "p2p",
+          "default": "26656",
+          "exposure": "public"
+        },
+        {
+          "role": "rpc",
+          "default": "26657",
+          "exposure": "loopback"
+        },
+        {
+          "role": "abci",
+          "default": "26658",
+          "exposure": "loopback"
+        }
       ],
       "paths": {
         "source": "$HOME/gno",
@@ -109,5 +128,29 @@
     "p2p": "public when required for peer connectivity",
     "rpc": "loopback by default",
     "abci": "loopback by default"
+  },
+  "validator_interactions": {
+    "account_queries": [
+      "bank/balances/{address}",
+      "auth/accounts/{address}",
+      "auth/gasprice"
+    ],
+    "candidate_realm": "r/gnops/valopers",
+    "active_realm": "r/sys/validators/v0",
+    "profile_updates": [
+      "UpdateMoniker",
+      "UpdateDescription",
+      "UpdateServerType",
+      "UpdateKeepRunning"
+    ],
+    "signing_key_rotation": "UpdateSigningKey",
+    "read_only_vm_queries": [
+      "vm/qrender",
+      "vm/qfuncs",
+      "vm/qdoc",
+      "vm/qeval",
+      "vm/qstorage",
+      "vm/qpaths"
+    ]
   }
 }

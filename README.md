@@ -119,6 +119,10 @@ The branch commit and release tag commit are kept separate deliberately. The rel
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
 - Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with the same user-facing registration sequence as Valley of Gnoland Testnet. Local node sync is advisory rather than a transaction blocker; signer/address and on-chain registration-fee checks remain fail-closed.
 
+## Validator / Key / Account Console
+
+The `2.x` menu is an operator console rather than a raw-command shortcut. It can inspect local operator keys, account balance/account sequence, gas price, valoper candidate and active-validator state, and the local-vs-registered consensus identity. It also exposes confirmed valoper profile updates, guarded signing-key rotation, and an advanced read-only realm inspector. Option `2c` remains the validator-registration entry point.
+
 ## Documentation
 
 - [Usage guide](docs/usage.md)

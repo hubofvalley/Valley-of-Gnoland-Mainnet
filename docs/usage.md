@@ -97,3 +97,15 @@ The menu numbering and startup flow remain stable:
 - Official persistent peers: `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656`
 - Valoper candidate realm: `r/gnops/valopers`
 - Active validator realm: `r/sys/validators/v0`
+
+## Validator / Key / Account interactions
+
+The `2.x` section provides first-class operator workflows instead of requiring users to know raw ABCI paths:
+
+- `2a` manages local operator keys.
+- `2b` correlates the local consensus key with the on-chain valoper profile and active validator set.
+- `2c` registers a valoper candidate with signer/address, input, duplicate-profile, balance visibility, and dynamic registration-fee preflight. Local node sync remains advisory rather than a transaction blocker.
+- `2d` queries `bank/balances/<address>`, `auth/accounts/<address>`, `auth/gasprice`, valoper status, and current valoper fee/rotation parameters.
+- `2e` manages the verified `UpdateMoniker`, `UpdateDescription`, `UpdateServerType`, and `UpdateKeepRunning` valoper functions with transaction previews and explicit confirmation.
+- `2f` exposes high-impact `UpdateSigningKey` rotation behind dynamic fee checks and an exact `ROTATE` confirmation. Valley does not modify local validator secrets automatically.
+- `2g` exposes read-only `vm/qrender`, `vm/qfuncs`, `vm/qdoc`, `vm/qeval`, `vm/qstorage`, `vm/qpaths`, plus arbitrary ABCI queries.

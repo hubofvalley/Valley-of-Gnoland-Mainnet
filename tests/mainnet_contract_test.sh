@@ -160,7 +160,7 @@ grep -Fq '2c. Mainnet Validator Registration' "$MAIN" || fail "2c mainnet regist
 if grep -Fq '2c. Mainnet Validator Registration (disabled)' "$MAIN"; then
     fail "2c mainnet registration menu is still marked disabled"
 fi
-grep -Fq -- '-pkgpath gno.land/r/gnops/valopers' "$MAIN" || fail "2c does not call the verified valoper realm"
+grep -Fq -- '-pkgpath "gno.land/$GNOLAND_VALOPER_REALM"' "$MAIN" || fail "2c does not call the verified valoper realm pin"
 grep -Fq -- '-func Register' "$MAIN" || fail "2c does not call Register"
 grep -Fq -- '-gas-fee "$VALOPER_GAS_FEE"' "$MAIN" || fail "2c does not use the verified gas fee"
 grep -Fq -- '-gas-wanted "$VALOPER_GAS_WANTED"' "$MAIN" || fail "2c does not use the verified gas wanted"
@@ -171,7 +171,7 @@ grep -Fq 'derived_operator_addr=$(operator_key_address "$KEY_NAME")' "$MAIN" || 
 if grep -Fq 'Registration blocked: local node must be synced on' "$MAIN"; then
     fail "2c must not hard-block candidate registration on local RPC sync state"
 fi
-grep -Fq 'candidate registration itself is signed with gnokey and broadcast through' "$MAIN" || fail "2c does not document local sync as advisory"
+grep -Fq 'local RPC sync is not a transaction blocker' "$MAIN" || fail "2c does not document local sync as advisory"
 grep -Fq 'GovDAO' "$MAIN" || fail "2c does not surface the GovDAO admission gate"
 
 # Keep the normal 2c interaction sequence aligned with Valley of Gnoland Testnet.
@@ -184,7 +184,7 @@ for prompt in \
     "Enter consensus gpub1... public key: " \
     "Transaction preview:" \
     "Broadcast registration transaction? (yes/no): " \
-    "Candidate registration submitted if broadcast succeeded."; do
+    "Candidate registration transaction broadcast succeeded."; do
     grep -Fq -- "$prompt" "$MAIN" || fail "2c Testnet-aligned UX prompt missing: $prompt"
 done
 
