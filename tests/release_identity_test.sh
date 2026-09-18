@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CHECK="$ROOT/resources/check_release_identity.sh"
+VERSIONS="$ROOT/VERSIONS.json"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -83,6 +84,15 @@ missing_rc=$?
 set -e
 [ "$missing_rc" -eq 2 ] || fail "missing binary must return usage/runtime error status"
 
+[ "$(jq -r '.versioned_release_tag' "$VERSIONS")" = 'v1.2.0' ] || fail "versioned release tag is not pinned"
+[ "$(jq -r '.versioned_binary_assets.platform' "$VERSIONS")" = 'linux_amd64' ] || fail "versioned asset platform is not pinned"
+[ "$(jq -r '.versioned_binary_assets.checksums_sha256' "$VERSIONS")" = '3f79dc4102c5ad9dd37a6f53adb294f13797f73e1c856ff0f77b3d6773d62078' ] || fail "v1.2.0 CHECKSUMS.txt digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnoland.sha256' "$VERSIONS")" = '02151e2f21988fa41e62fda0eab617fafc21c3c5fd2f51b0061c382f625e6813' ] || fail "v1.2.0 gnoland digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnoland.reported_version' "$VERSIONS")" = 'v1.2.0' ] || fail "v1.2.0 gnoland identity is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnokey.sha256' "$VERSIONS")" = 'b0ab64292328651928186715c438e224f9f77ca105400de8e7176d010483754a' ] || fail "v1.2.0 gnokey digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnokey.reported_version' "$VERSIONS")" = 'v1.2.0' ] || fail "v1.2.0 gnokey identity is not pinned"
+
+grep -Fq -- '--expect-sha256' "$CHECK" || fail "release identity helper does not expose digest verification"
 grep -Fq "version = \"develop\"" "$CHECK" && fail "check must inspect the binary rather than hard-code the launch version"
 
 printf '%s\n' 'RELEASE_IDENTITY_TEST_OK'
