@@ -53,13 +53,13 @@ done
 facts=(
     'gnoland-1'
     'chain/mainnet'
-    '00417a1be97b9a311d9669ae7aa9585b277ee594'
+    'e75fef82c02876a4df92ad6e325c5479b9532168'
     '9c8eb132e483d6fd324d92c193e629ad65a98a37'
     'misc/deployments/mainnet.gno.land/'
     'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0'
     '32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9'
-    'ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3'
-    '86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14'
+    '5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc'
+    '2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd'
     'https://rpc.gno.land'
     'https://gno.land'
     'g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656'
@@ -73,10 +73,10 @@ done
 
 for script in "$INSTALLER" "$UPDATER"; do
     grep -Fq 'SOURCE_BRANCH="chain/mainnet"' "$script" || fail "$script does not pin the mainnet source branch"
-    grep -Fq 'SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"' "$script" || fail "$script does not pin the mainnet source commit"
+    grep -Fq 'SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"' "$script" || fail "$script does not pin the mainnet source commit"
     grep -Fq 'RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"' "$script" || fail "$script does not retain release tag metadata"
     grep -Fq 'RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"' "$script" || fail "$script does not check upstream release metadata"
-    grep -Fq 'ASSET_VERSION="chain/mainnet.3435+139a63fe6"' "$script" || fail "$script does not verify the reviewed asset identity"
+    grep -Fq 'ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"' "$script" || fail "$script does not verify the reviewed asset identity"
     grep -Fq 'GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"' "$script" || fail "$script does not verify the official mainnet genesis"
     grep -Fq 'GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"' "$script" || fail "$script does not verify the compressed official mainnet genesis"
     grep -Fq 'fetch --depth 1 origin "$SOURCE_COMMIT"' "$script" || fail "$script does not fetch the exact reviewed source commit"
@@ -85,8 +85,15 @@ for script in "$INSTALLER" "$UPDATER"; do
     fi
 done
 
-grep -Fq 'gnoland_linux_amd64' "$INSTALLER" || fail "installer asset name missing"
-grep -Fq 'gnokey_linux_amd64' "$INSTALLER" || fail "installer asset name missing"
+grep -Fq 'GNO_IMAGE_REPOSITORY=' "$INSTALLER" || fail "gno OCI repository pin missing"
+grep -Fq 'GNO_IMAGE_MANIFEST_DIGEST=' "$INSTALLER" || fail "gno OCI manifest pin missing"
+grep -Fq 'GNOLAND_IMAGE_REPOSITORY=' "$INSTALLER" || fail "gnoland OCI repository pin missing"
+grep -Fq 'GNOLAND_IMAGE_MANIFEST_DIGEST=' "$INSTALLER" || fail "gnoland OCI manifest pin missing"
+grep -Fq 'GNOKEY_IMAGE_REPOSITORY=' "$INSTALLER" || fail "gnokey OCI repository pin missing"
+grep -Fq 'GNOKEY_IMAGE_MANIFEST_DIGEST=' "$INSTALLER" || fail "gnokey OCI manifest pin missing"
+grep -Fq 'stage_oci_binary gno' "$INSTALLER" || fail "gno OCI extraction missing"
+grep -Fq 'stage_oci_binary gnoland' "$INSTALLER" || fail "gnoland OCI extraction missing"
+grep -Fq 'stage_oci_binary gnokey' "$INSTALLER" || fail "gnokey OCI extraction missing"
 grep -Fq -- '--skip-genesis-sig-verification' "$INSTALLER" || fail "mainnet startup verification flag missing"
 grep -Fq 'INSTALL-GNOLAND-1' "$INSTALLER" || fail "explicit install confirmation missing"
 grep -Fq 'Destructive reinstall refused' "$INSTALLER" || fail "unknown existing node guard missing"
@@ -110,12 +117,12 @@ fi
 [ "$(jq -r '.versioned_release_tag' "$VERSIONS")" = 'v1.2.0' ] || fail "VERSIONS versioned release tag is wrong"
 [ "$(jq -r '.versioned_release_commit' "$VERSIONS")" = '9c8eb132e483d6fd324d92c193e629ad65a98a37' ] || fail "VERSIONS versioned release commit is wrong"
 [ "$(jq -r '.source_branch' "$VERSIONS")" = 'chain/mainnet' ] || fail "VERSIONS source branch is wrong"
-[ "$(jq -r '.source_commit' "$VERSIONS")" = '00417a1be97b9a311d9669ae7aa9585b277ee594' ] || fail "VERSIONS source commit is wrong"
+[ "$(jq -r '.source_commit' "$VERSIONS")" = 'e75fef82c02876a4df92ad6e325c5479b9532168' ] || fail "VERSIONS source commit is wrong"
 [ "$(jq -r '.deployment_path' "$VERSIONS")" = 'misc/deployments/mainnet.gno.land/' ] || fail "VERSIONS deployment path is wrong"
-[ "$(jq -r '.binary_assets.gnoland.sha256' "$VERSIONS")" = 'ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3' ] || fail "VERSIONS gnoland hash is wrong"
-[ "$(jq -r '.binary_assets.gnokey.sha256' "$VERSIONS")" = '86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14' ] || fail "VERSIONS gnokey hash is wrong"
-[ "$(jq -r '.binary_assets.gnoland.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnoland reported version is wrong"
-[ "$(jq -r '.binary_assets.gnokey.reported_version' "$VERSIONS")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VERSIONS gnokey reported version is wrong"
+[ "$(jq -r '.oci_images.gno.binary_sha256' "$VERSIONS")" = '423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d' ] || fail "VERSIONS gno hash is wrong"
+[ "$(jq -r '.oci_images.gnoland.binary_sha256' "$VERSIONS")" = '5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc' ] || fail "VERSIONS gnoland hash is wrong"
+[ "$(jq -r '.oci_images.gnokey.binary_sha256' "$VERSIONS")" = '2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd' ] || fail "VERSIONS gnokey hash is wrong"
+[ "$(jq -r '.oci_images.reported_version' "$VERSIONS")" = 'heads/chain/mainnet.3444+e75fef82c' ] || fail "VERSIONS OCI reported version is wrong"
 [ "$(jq -r '.genesis.sha256' "$VERSIONS")" = 'ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0' ] || fail "VERSIONS genesis hash is wrong"
 [ "$(jq -r '.genesis.compressed_sha256' "$VERSIONS")" = '32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9' ] || fail "VERSIONS compressed genesis hash is wrong"
 [ "$(jq -r '.endpoints.faucet' "$VERSIONS")" = 'null' ] || fail "VERSIONS must state that no faucet exists"
@@ -131,7 +138,7 @@ fi
 [ "$(jq -r '.architecture' "$VALLEY")" = 'v1' ] || fail "VALLEY topology is not v1"
 [ "$(jq -r '.public_launcher' "$VALLEY")" = 'direct' ] || fail "public launcher must be direct"
 [ "$(jq -r '.release.versioned_tag' "$VALLEY")" = 'v1.2.0' ] || fail "VALLEY versioned release tag is wrong"
-[ "$(jq -r '.install.reported_version' "$VALLEY")" = 'chain/mainnet.3435+139a63fe6' ] || fail "VALLEY asset reported version is wrong"
+[ "$(jq -r '.install.reported_version' "$VALLEY")" = 'heads/chain/mainnet.3444+e75fef82c' ] || fail "VALLEY asset reported version is wrong"
 [ "$(jq -r '.install.persistent_backup' "$VALLEY")" = 'optional_prompt' ] || fail "VALLEY backup policy is wrong"
 [ "$(jq -r '.install.preserve_existing_node_secrets' "$VALLEY")" = 'true' ] || fail "VALLEY identity-preservation policy is missing"
 [ "$(jq -r '.endpoints.faucet' "$VALLEY")" = 'null' ] || fail "VALLEY must state that no faucet exists"
@@ -145,9 +152,9 @@ fi
 for option in '1a' '1b' '1c' '1d' '1e' '1f' '1g' '2a' '2b' '2c' '2d' '3a' '3b' '3c' '3d'; do
     grep -Fq "$option" "$MAIN" || fail "menu option $option is missing"
 done
-grep -Fq 'readonly GNOLAND_ASSET_VERSION="chain/mainnet.3435+139a63fe6"' "$MAIN" ||
+grep -Fq 'readonly GNOLAND_ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"' "$MAIN" ||
     fail "main launcher asset version pin is missing"
-grep -Fq "1b. Update Gnoland/Gnokey from Pinned Mainnet Assets (\${GNOLAND_ASSET_VERSION})" "$MAIN" ||
+grep -Fq "1b. Update Gno/Gnoland/Gnokey from Pinned Mainnet OCI Assets (\${GNOLAND_ASSET_VERSION})" "$MAIN" ||
     fail "1b menu entry does not surface the pinned asset version"
 grep -Fq "Target source commit: \${GNOLAND_SOURCE_COMMIT}" "$MAIN" ||
     fail "update confirmation does not surface the source commit"

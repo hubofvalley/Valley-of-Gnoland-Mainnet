@@ -11,13 +11,17 @@ RESET='\033[0m'
 readonly GNOLAND_CHAIN_ID_DEFAULT="gnoland-1"
 readonly GNOLAND_PUBLIC_RPC_DEFAULT="https://rpc.gno.land"
 readonly GNOLAND_SOURCE_BRANCH="chain/mainnet"
-readonly GNOLAND_SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"
+readonly GNOLAND_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
 readonly GNOLAND_RELEASE_TAG="chain/mainnet"
 readonly GNOLAND_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
-readonly GNOLAND_ASSET_VERSION="chain/mainnet.3435+139a63fe6"
+readonly GNOLAND_ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"
 readonly GNOLAND_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly GNOLAND_BIN_SHA256="ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3"
-readonly GNOKEY_BIN_SHA256="86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14"
+readonly GNO_BIN_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
+readonly GNOLAND_BIN_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
+readonly GNOKEY_BIN_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
+readonly GNO_IMAGE_REF="ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc"
+readonly GNOLAND_IMAGE_REF="ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0"
+readonly GNOKEY_IMAGE_REF="ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
@@ -83,6 +87,7 @@ fi
 GNOKEY_HOME=${GNOKEY_HOME:-$HOME/.config/gno}
 GNOLAND_GENESIS="$GNOLAND_DEPLOYMENT_DIR/genesis.json"
 GNOROOT=${GNOROOT:-$GNO_SOURCE_DIR}
+GNO_BIN=${GNO_BIN:-$HOME/go/bin/gno}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
 GNOLAND_CHAIN_ID=${GNOLAND_CHAIN_ID:-$GNOLAND_CHAIN_ID_DEFAULT}
@@ -159,9 +164,9 @@ ${GREEN}Gno.land gnoland-1 Node${RESET}
 - mainnet deployment: ${CYAN}${GNOLAND_DEPLOYMENT_DIR}${RESET}
 - node directory: ${CYAN}${GNOLAND_MAINNET_HOME}${RESET}
 - operator keyring: ${CYAN}${GNOKEY_HOME}${RESET}
-- binaries: ${CYAN}$HOME/go/bin/gnoland, $HOME/go/bin/gnokey${RESET}
+- binaries: ${CYAN}$HOME/go/bin/gno, $HOME/go/bin/gnoland, $HOME/go/bin/gnokey${RESET}
 - service file: ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}
-- release assets: ${CYAN}verified Linux amd64 binaries${RESET}
+- release assets: ${CYAN}immutable GHCR OCI images, Linux amd64 binaries extracted from /usr/bin${RESET}
 - hardware requirements: ${CYAN}not asserted by this Valley${RESET}
 "
 
@@ -193,8 +198,10 @@ ${GREEN}Network facts:${RESET}
 - Chain ID: ${CYAN}gnoland-1${RESET}
 - Official persistent peers: ${CYAN}${OFFICIAL_GNOLAND_PEERS}${RESET}
 - Release genesis SHA256: ${CYAN}${GNOLAND_GENESIS_SHA256}${RESET}
+- gno Linux amd64 SHA256: ${CYAN}${GNO_BIN_SHA256}${RESET}
 - gnoland Linux amd64 SHA256: ${CYAN}${GNOLAND_BIN_SHA256}${RESET}
 - gnokey Linux amd64 SHA256: ${CYAN}${GNOKEY_BIN_SHA256}${RESET}
+- OCI image refs: ${CYAN}${GNO_IMAGE_REF}, ${GNOLAND_IMAGE_REF}, ${GNOKEY_IMAGE_REF}${RESET}
 - Valoper candidate realm: ${CYAN}${GNOLAND_VALOPER_REALM}${RESET}
 - Active validator realm: ${CYAN}${GNOLAND_ACTIVE_REALM}${RESET}
 
@@ -229,6 +236,7 @@ write_valley_profile_block() {
             /^export GNOLAND_GENESIS=/ {next}
             /^export GNOLAND_PUBLIC_REMOTE=/ {next}
             /^export GNOKEY_HOME=/ {next}
+            /^export GNO_BIN=/ {next}
             /^export GNO_SOURCE_DIR=/ {next}
             /^export GNOROOT=/ {next}
             {print}
@@ -242,6 +250,7 @@ export GNOLAND_MAINNET_SERVICE_NAME="$GNOLAND_MAINNET_SERVICE_NAME"
 export GNOLAND_DEPLOYMENT_DIR="$GNOLAND_DEPLOYMENT_DIR"
 export GNOLAND_GENESIS="$GNOLAND_GENESIS"
 export GNOKEY_HOME="$GNOKEY_HOME"
+export GNO_BIN="$GNO_BIN"
 export GNO_SOURCE_DIR="$GNO_SOURCE_DIR"
 export GNOROOT="$GNOROOT"
 export GNOLAND_PUBLIC_REMOTE="$GNOLAND_PUBLIC_RPC_DEFAULT"
@@ -268,6 +277,7 @@ remove_valley_profile_block() {
         /^export GNOLAND_REMOTE=/ {next}
         /^export GNOLAND_PUBLIC_REMOTE=/ {next}
         /^export GNOKEY_HOME=/ {next}
+        /^export GNO_BIN=/ {next}
         /^export GNO_SOURCE_DIR=/ {next}
         /^export GNOROOT=/ {next}
         {print}
@@ -551,7 +561,7 @@ function deploy_gnoland_node() {
     echo -e "${YELLOW}Service:${RESET} ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}"
     echo -e "${YELLOW}Directory:${RESET} ${CYAN}$GNOLAND_MAINNET_HOME${RESET}"
     echo -e "${YELLOW}Default ports:${RESET} P2P ${CYAN}26656${RESET}, RPC ${CYAN}26657${RESET}, ABCI ${CYAN}26658${RESET}; the installer remaps local listeners with the chosen two-digit prefix."
-    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus verified Linux amd64 release assets."
+    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus immutable GHCR OCI image digests; /usr/bin binaries are extracted and hashed before cutover."
     echo -e "${YELLOW}Install safety:${RESET} all artifacts are staged first; a persistent backup is optional, while existing validator/node secrets are preserved on a recognized safe reinstall."
     echo -e "${RED}Installation rebuilds Valley node database/config only after staging and explicit confirmation.${RESET}"
     echo
@@ -1357,7 +1367,7 @@ function delete_gnoland_node() {
     sudo systemctl daemon-reload
     rm -rf "$GNOLAND_MAINNET_HOME"
     rm -f "$GNOLAND_GENESIS"
-    rm -f "$GNOLAND_BIN" "$GNOKEY_BIN"
+    rm -f "$GNO_BIN" "$GNOLAND_BIN" "$GNOKEY_BIN"
     remove_valley_profile_block
     echo -e "${RED}Gnoland node deleted. Local gnokey home was not deleted: $GNOKEY_HOME${RESET}"
     menu
@@ -1373,7 +1383,7 @@ function show_endpoints() {
 function show_guidelines() {
     echo -e "${CYAN}Guidelines on How to Use the Valley of Gnoland${RESET}"
     echo -e "${GREEN}Recommended flow:${RESET}"
-    echo " - 1a Install the node from the pinned mainnet source and verified release assets"
+    echo " - 1a Install the node from the pinned mainnet source and immutable GHCR OCI assets"
     echo " - 1e Confirm local RPC reports gnoland-1 and monitor sync"
     echo " - 1g Run the read-only Node Doctor"
     echo " - 2a Manage an operator key only after reviewing key safety"
@@ -1381,8 +1391,8 @@ function show_guidelines() {
     echo -e "${YELLOW}Mainnet candidate registration is enabled in option 2c using the verified upstream procedure. Snapshot application remains disabled until a provider is independently verified.${RESET}"
     echo
     echo -e "${GREEN}Node Interactions:${RESET}"
-    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and release assets, then starts gnoland-1."
-    echo "   b) Update Gnoland/Gnokey: verifies the pinned source and release assets."
+    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and OCI image assets, then starts gnoland-1."
+    echo "   b) Update Gno/Gnoland/Gnokey: verifies the pinned source and OCI image assets."
     echo "   c) Apply Snapshot: fails closed without a verified gnoland-1 provider."
     echo "   d) Add/Reset Peers: manages persistent peers and the official mainnet seed list."
     echo "   e) Show Node Status: shows local health and comparison-RPC height."
@@ -1421,7 +1431,7 @@ function menu() {
     echo
     echo "1. Node Interactions"
     echo "   1a. Deploy/Re-deploy Gnoland Node"
-    echo "   1b. Update Gnoland/Gnokey from Pinned Mainnet Assets (${GNOLAND_ASSET_VERSION})"
+    echo "   1b. Update Gno/Gnoland/Gnokey from Pinned Mainnet OCI Assets (${GNOLAND_ASSET_VERSION})"
     echo "   1c. Apply Snapshot"
     echo "   1d. Add/Reset Peers"
     echo "   1e. Show Node Status"

@@ -18,8 +18,8 @@ if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$MAIN" "$DOCTOR"; then
 fi
 
 grep -Fq 'GNOLAND_SOURCE_BRANCH="chain/mainnet"' "$MAIN" || fail "main menu source branch missing"
-grep -Fq 'GNOLAND_SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"' "$MAIN" || fail "main menu source commit missing"
-grep -Fq 'GNOLAND_ASSET_VERSION="chain/mainnet.3435+139a63fe6"' "$MAIN" || fail "main menu asset version missing"
+grep -Fq 'GNOLAND_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"' "$MAIN" || fail "main menu source commit missing"
+grep -Fq 'GNOLAND_ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"' "$MAIN" || fail "main menu asset version missing"
 grep -Fq 'OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"' "$MAIN" || fail "official peers missing"
 
 for helper in resources/gnoland_node_install.sh resources/gnoland_node_doctor.sh resources/gnoland_update.sh; do

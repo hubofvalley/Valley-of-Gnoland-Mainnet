@@ -20,7 +20,7 @@ if [ -z "$install_stage_line" ] || [ -z "$install_cutover_line" ]; then
 fi
 [ "$install_stage_line" -lt "$install_cutover_line" ] || fail "installer cutover begins before staging completes"
 
-update_stage_line=$(line_of 'CURRENT_STAGE="stage and verify release assets"' "$UPDATER")
+update_stage_line=$(line_of 'CURRENT_STAGE="stage and verify immutable GHCR OCI binaries"' "$UPDATER")
 update_cutover_line=$(line_of 'CURRENT_STAGE="cut over reviewed runtime"' "$UPDATER")
 if [ -z "$update_stage_line" ] || [ -z "$update_cutover_line" ]; then
     fail "updater staging/cutover markers missing"

@@ -17,6 +17,7 @@ OLD_SOURCE_PRESENT=false
 OLD_EXTERNAL_NODE_PRESENT=false
 OLD_SERVICE_PRESENT=false
 OLD_PROFILE_PRESENT=false
+OLD_GNO_PRESENT=false
 OLD_GNOLAND_PRESENT=false
 OLD_GNOKEY_PRESENT=false
 NODE_HOME_INSIDE_SOURCE=false
@@ -25,19 +26,30 @@ EXTERNAL_NODE_RUNTIME_STARTED=false
 
 readonly CHAIN_ID="gnoland-1"
 readonly SOURCE_BRANCH="chain/mainnet"
-readonly SOURCE_COMMIT="00417a1be97b9a311d9669ae7aa9585b277ee594"
+readonly SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
 readonly RELEASE_TAG="chain/mainnet"
 readonly RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
-readonly RELEASE_ASSET_BASE_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet"
 readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"
 readonly GENESIS_GZ_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json.gz"
 readonly GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"
 readonly GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly GNOLAND_ASSET="gnoland_linux_amd64"
-readonly GNOLAND_ASSET_SHA256="ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3"
-readonly GNOKEY_ASSET="gnokey_linux_amd64"
-readonly GNOKEY_ASSET_SHA256="86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14"
-readonly ASSET_VERSION="chain/mainnet.3435+139a63fe6"
+readonly OCI_REGISTRY="ghcr.io"
+readonly GNO_IMAGE_REPOSITORY="gnolang/gno/gno"
+readonly GNO_IMAGE_MANIFEST_DIGEST="sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc"
+readonly GNO_BINARY_LAYER_DIGEST="sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff"
+readonly GNO_BINARY_PATH="/usr/bin/gno"
+readonly GNO_BIN_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
+readonly GNOLAND_IMAGE_REPOSITORY="gnolang/gno/gnoland"
+readonly GNOLAND_IMAGE_MANIFEST_DIGEST="sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0"
+readonly GNOLAND_BINARY_LAYER_DIGEST="sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63"
+readonly GNOLAND_BINARY_PATH="/usr/bin/gnoland"
+readonly GNOLAND_BIN_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
+readonly GNOKEY_IMAGE_REPOSITORY="gnolang/gno/gnokey"
+readonly GNOKEY_IMAGE_MANIFEST_DIGEST="sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71"
+readonly GNOKEY_BINARY_LAYER_DIGEST="sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352"
+readonly GNOKEY_BINARY_PATH="/usr/bin/gnokey"
+readonly GNOKEY_BIN_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
+readonly ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly PUBLIC_RPC="https://rpc.gno.land"
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
@@ -49,6 +61,7 @@ GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$GNO_SOURCE_DIR/gnoland-data}
 GNOKEY_HOME=${GNOKEY_HOME:-$HOME/.config/gno}
 GENESIS_FILE=${GNOLAND_GENESIS:-$GNOLAND_DEPLOYMENT_DIR/genesis.json}
 GNOROOT=${GNOROOT:-$GNO_SOURCE_DIR}
+GNO_BIN=${GNO_BIN:-$HOME/go/bin/gno}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
 OS_USER=$(id -un)
@@ -83,6 +96,11 @@ rollback_install() {
         rm -rf "$GNOLAND_MAINNET_HOME"
     fi
 
+    if $OLD_GNO_PRESENT && [ -f "$ROLLBACK_ROOT/gno" ]; then
+        install -m 0755 "$ROLLBACK_ROOT/gno" "$GNO_BIN" || true
+    elif ! $OLD_GNO_PRESENT; then
+        rm -f "$GNO_BIN"
+    fi
     if $OLD_GNOLAND_PRESENT && [ -f "$ROLLBACK_ROOT/gnoland" ]; then
         install -m 0755 "$ROLLBACK_ROOT/gnoland" "$GNOLAND_BIN" || true
     elif ! $OLD_GNOLAND_PRESENT; then
@@ -152,6 +170,7 @@ write_profile_block() {
             /^export GNOLAND_REMOTE=/ {next}
             /^export GNOLAND_PUBLIC_REMOTE=/ {next}
             /^export GNOKEY_HOME=/ {next}
+            /^export GNO_BIN=/ {next}
             /^export GNO_SOURCE_DIR=/ {next}
             /^export GNOROOT=/ {next}
             {print}
@@ -167,6 +186,7 @@ export GNOLAND_MAINNET_SERVICE_NAME="$GNOLAND_MAINNET_SERVICE_NAME"
 export GNOLAND_DEPLOYMENT_DIR="$GNOLAND_DEPLOYMENT_DIR"
 export GNOLAND_GENESIS="$GENESIS_FILE"
 export GNOKEY_HOME="$GNOKEY_HOME"
+export GNO_BIN="$GNO_BIN"
 export GNOLAND_OPERATOR_KEY="$OPERATOR_KEY_NAME"
 export GNO_SOURCE_DIR="$GNO_SOURCE_DIR"
 export GNOROOT="$GNOROOT"
@@ -186,20 +206,48 @@ verify_reported_version() {
     echo -e "${GREEN}Verified $label reported version: $version${RESET}"
 }
 
+stage_oci_binary() {
+    local label=$1 repository=$2 manifest_digest=$3 layer_digest=$4 binary_path=$5 expected_sha=$6 output=$7
+    local token manifest_file layer_file binary_file tar_path
+    manifest_file="$TMP_DIR/oci-${label}.manifest.json"
+    layer_file="$TMP_DIR/oci-${label}.layer.tar.gz"
+    binary_file="$TMP_DIR/oci-${label}.binary"
+    tar_path=${binary_path#/}
+
+    token=$(curl -m 30 -fsSL "https://${OCI_REGISTRY}/token?scope=repository:${repository}:pull" | jq -er '.token')
+    curl -m 120 -fsSL \
+        -H "Authorization: Bearer $token" \
+        -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
+        "https://${OCI_REGISTRY}/v2/${repository}/manifests/${manifest_digest}" -o "$manifest_file"
+    printf '%s  %s\n' "${manifest_digest#sha256:}" "$manifest_file" | sha256sum --check - >/dev/null
+    jq -e --arg digest "$layer_digest" \
+        '(.schemaVersion == 2) and any(.layers[]?; .digest == $digest and .mediaType == "application/vnd.oci.image.layer.v1.tar+gzip")' \
+        "$manifest_file" >/dev/null
+
+    curl -m 120 -fsSL -H "Authorization: Bearer $token" \
+        "https://${OCI_REGISTRY}/v2/${repository}/blobs/${layer_digest}" -o "$layer_file"
+    printf '%s  %s\n' "${layer_digest#sha256:}" "$layer_file" | sha256sum --check - >/dev/null
+    tar -tzf "$layer_file" | grep -Fxq "$tar_path" || {
+        echo "${label} OCI layer does not contain ${binary_path}." >&2
+        return 1
+    }
+    tar -xOzf "$layer_file" "$tar_path" > "$binary_file"
+    printf '%s  %s\n' "$expected_sha" "$binary_file" | sha256sum --check - >/dev/null
+    chmod 0755 "$binary_file"
+    install -m 0755 "$binary_file" "$output"
+    printf '%s  %s\n' "$expected_sha" "$output" | sha256sum --check - >/dev/null
+}
+
 check_upstream_release_drift() {
-    local json observed_target observed_gnoland observed_gnokey observed_genesis
+    local json observed_target observed_genesis
     json=$(curl -m 15 -fsSL "$RELEASE_API_URL" 2>/dev/null || true)
     if [ -z "$json" ]; then
         echo -e "${YELLOW}Upstream release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
         return 0
     fi
     observed_target=$(printf '%s' "$json" | jq -r '.target_commitish // empty')
-    observed_gnoland=$(printf '%s' "$json" | jq -r --arg n "$GNOLAND_ASSET" '.assets[]? | select(.name==$n) | .digest' | head -n 1)
-    observed_gnokey=$(printf '%s' "$json" | jq -r --arg n "$GNOKEY_ASSET" '.assets[]? | select(.name==$n) | .digest' | head -n 1)
     observed_genesis=$(printf '%s' "$json" | jq -r '.assets[]? | select(.name=="genesis.json") | .digest' | head -n 1)
     if [ "$observed_target" != "$RELEASE_COMMIT" ] || \
-       [ "$observed_gnoland" != "sha256:$GNOLAND_ASSET_SHA256" ] || \
-       [ "$observed_gnokey" != "sha256:$GNOKEY_ASSET_SHA256" ] || \
        [ "$observed_genesis" != "sha256:$GENESIS_SHA256" ]; then
         echo -e "${RED}Upstream chain/mainnet release metadata differs from Valley's reviewed pins.${RESET}" >&2
         echo "Nothing has been stopped or deleted. Review Valley pins before installing." >&2
@@ -275,7 +323,7 @@ if [ "$(realpath -m "$GENESIS_FILE")" != "$(realpath -m "$GNOLAND_DEPLOYMENT_DIR
     echo -e "${RED}Mainnet genesis must be stored under $GNOLAND_DEPLOYMENT_DIR.${RESET}" >&2
     false
 fi
-for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOKEY_HOME" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
+for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINNET_HOME" "$GNOKEY_HOME" "$GNO_BIN" "$GNOLAND_BIN" "$GNOKEY_BIN" "$GENESIS_FILE"; do
     path_is_under_home "$instance_path" || { echo -e "${RED}Unsafe instance path outside $HOME: $instance_path${RESET}" >&2; false; }
 done
 
@@ -390,14 +438,12 @@ git -C "$TMP_DIR/stage-source" checkout --detach --force "$SOURCE_COMMIT" >/dev/
 [ "$(git -C "$TMP_DIR/stage-source" rev-parse HEAD)" = "$SOURCE_COMMIT" ]
 [ -d "$TMP_DIR/stage-source/misc/deployments/mainnet.gno.land" ] || { echo "Pinned source lacks mainnet deployment files." >&2; false; }
 
-curl -fsSL "$RELEASE_ASSET_BASE_URL/$GNOLAND_ASSET" -o "$TMP_DIR/gnoland"
-printf '%s  %s\n' "$GNOLAND_ASSET_SHA256" "$TMP_DIR/gnoland" | sha256sum --check - >/dev/null
-chmod 0755 "$TMP_DIR/gnoland"
-verify_reported_version "$TMP_DIR/gnoland" "$GNOLAND_ASSET" gnoland
-curl -fsSL "$RELEASE_ASSET_BASE_URL/$GNOKEY_ASSET" -o "$TMP_DIR/gnokey"
-printf '%s  %s\n' "$GNOKEY_ASSET_SHA256" "$TMP_DIR/gnokey" | sha256sum --check - >/dev/null
-chmod 0755 "$TMP_DIR/gnokey"
-verify_reported_version "$TMP_DIR/gnokey" "$GNOKEY_ASSET" gnokey
+stage_oci_binary gno "$GNO_IMAGE_REPOSITORY" "$GNO_IMAGE_MANIFEST_DIGEST" "$GNO_BINARY_LAYER_DIGEST" "$GNO_BINARY_PATH" "$GNO_BIN_SHA256" "$TMP_DIR/gno"
+verify_reported_version "$TMP_DIR/gno" "gno" gno
+stage_oci_binary gnoland "$GNOLAND_IMAGE_REPOSITORY" "$GNOLAND_IMAGE_MANIFEST_DIGEST" "$GNOLAND_BINARY_LAYER_DIGEST" "$GNOLAND_BINARY_PATH" "$GNOLAND_BIN_SHA256" "$TMP_DIR/gnoland"
+verify_reported_version "$TMP_DIR/gnoland" "gnoland" gnoland
+stage_oci_binary gnokey "$GNOKEY_IMAGE_REPOSITORY" "$GNOKEY_IMAGE_MANIFEST_DIGEST" "$GNOKEY_BINARY_LAYER_DIGEST" "$GNOKEY_BINARY_PATH" "$GNOKEY_BIN_SHA256" "$TMP_DIR/gnokey"
+verify_reported_version "$TMP_DIR/gnokey" "gnokey" gnokey
 curl -fsSL "$GENESIS_GZ_URL" -o "$TMP_DIR/genesis.json.gz"
 printf '%s  %s\n' "$GENESIS_GZ_SHA256" "$TMP_DIR/genesis.json.gz" | sha256sum --check - >/dev/null
 gzip -dc "$TMP_DIR/genesis.json.gz" > "$TMP_DIR/genesis.json"
@@ -409,6 +455,7 @@ create_optional_backup
 ROLLBACK_ROOT="$HOME/.gnoland-mainnet-install-rollback-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$ROLLBACK_ROOT"
 [ -f "$HOME/.bash_profile" ] && { cp -p "$HOME/.bash_profile" "$ROLLBACK_ROOT/bash_profile"; OLD_PROFILE_PRESENT=true; }
+[ -x "$GNO_BIN" ] && { cp -p "$GNO_BIN" "$ROLLBACK_ROOT/gno"; OLD_GNO_PRESENT=true; }
 [ -x "$GNOLAND_BIN" ] && { cp -p "$GNOLAND_BIN" "$ROLLBACK_ROOT/gnoland"; OLD_GNOLAND_PRESENT=true; }
 [ -x "$GNOKEY_BIN" ] && { cp -p "$GNOKEY_BIN" "$ROLLBACK_ROOT/gnokey"; OLD_GNOKEY_PRESENT=true; }
 [ -f "$SERVICE_FILE" ] && { sudo cp "$SERVICE_FILE" "$ROLLBACK_ROOT/service"; sudo chown "$OS_USER":"$(id -gn)" "$ROLLBACK_ROOT/service"; OLD_SERVICE_PRESENT=true; }
@@ -426,11 +473,13 @@ SOURCE_CUTOVER_ATTEMPTED=true
 mkdir -p "$(dirname "$GNO_SOURCE_DIR")"
 cp -a "$TMP_DIR/stage-source" "$GNO_SOURCE_DIR"
 mkdir -p "$GNOLAND_DEPLOYMENT_DIR" "$HOME/go/bin" "$GNOKEY_HOME"
+install -m 0755 "$TMP_DIR/gno" "$GNO_BIN"
 install -m 0755 "$TMP_DIR/gnoland" "$GNOLAND_BIN"
 install -m 0755 "$TMP_DIR/gnokey" "$GNOKEY_BIN"
 install -m 0644 "$TMP_DIR/genesis.json" "$GENESIS_FILE"
-printf '%s  %s\n' "$GNOLAND_ASSET_SHA256" "$GNOLAND_BIN" | sha256sum --check - >/dev/null
-printf '%s  %s\n' "$GNOKEY_ASSET_SHA256" "$GNOKEY_BIN" | sha256sum --check - >/dev/null
+printf '%s  %s\n' "$GNO_BIN_SHA256" "$GNO_BIN" | sha256sum --check - >/dev/null
+printf '%s  %s\n' "$GNOLAND_BIN_SHA256" "$GNOLAND_BIN" | sha256sum --check - >/dev/null
+printf '%s  %s\n' "$GNOKEY_BIN_SHA256" "$GNOKEY_BIN" | sha256sum --check - >/dev/null
 printf '%s  %s\n' "$GENESIS_SHA256" "$GENESIS_FILE" | sha256sum --check - >/dev/null
 export GNOROOT
 export PATH="$HOME/go/bin:$PATH"
