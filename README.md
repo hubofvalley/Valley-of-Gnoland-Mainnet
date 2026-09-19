@@ -4,7 +4,9 @@ Interactive terminal tooling by **Grand Valley** for installing, updating, inspe
 
 ## Overview
 
-[Gno.land](https://gno.land) is the Gno blockchain network maintained by the Gno community. This Valley installs the official Linux amd64 `chain/mainnet` release, keeps its source checkout pinned to the published mainnet branch, writes an isolated user-owned service configuration, and provides read-only status and diagnostic views.
+[Gno.land](https://gno.land) is the Gno blockchain network maintained by the Gno community. This Valley manages the single Cosmos/CometBFT-style `gnoland` service, its pinned mainnet source checkout, the official launch genesis, and the `gno`, `gnoland`, and `gnokey` command-line tools.
+
+The tools are installed from official, immutable Linux amd64 GHCR OCI image manifests built from the `chain/mainnet` branch. Valley extracts only `/usr/bin/gno`, `/usr/bin/gnoland`, and `/usr/bin/gnokey`, verifies the manifest, binary layer, and executable hashes, and does not require Docker. The launch genesis remains pinned to the official `chain/mainnet` release because the moving branch tip is not a genesis release.
 
 This repository does not automate validator admission. Option `2c` can prepare, preview, sign through the local `gnokey` keyring, and broadcast the official mainnet valoper-candidate registration transaction after explicit operator confirmation. Registration only creates a candidate profile; GovDAO must still approve a proposal before the node joins the active validator set. Mainnet has no public faucet. The snapshot menu is deliberately fail-closed because no provider has been independently verified for `gnoland-1`.
 
@@ -14,11 +16,11 @@ This repository does not automate validator admission. Option `2c` can prepare, 
 |---|---|
 | Chain ID | `gnoland-1` |
 | Source branch | `chain/mainnet` |
-| Source branch commit | `00417a1be97b9a311d9669ae7aa9585b277ee594` |
-| Release tag | `chain/mainnet` |
-| Release tag commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
-| Versioned release | `v1.2.0` (launch commit `9c8eb132e483d6fd324d92c193e629ad65a98a37`) |
-| Current `chain/mainnet` asset identity | `chain/mainnet.3435+139a63fe6` |
+| Source branch commit | `e75fef82c02876a4df92ad6e325c5479b9532168` |
+| Launch release tag | `chain/mainnet` |
+| Launch release/tag commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
+| Versioned launch release | `v1.2.0` at `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
+| OCI-reported tool version | `heads/chain/mainnet.3444+e75fef82c` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
 | Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
@@ -29,10 +31,13 @@ This repository does not automate validator admission. Option `2c` can prepare, 
 | Active validator realm | `r/sys/validators/v0` |
 | Official persistent peers | `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656` |
 
-Published Linux amd64 asset hashes are recorded in [VERSIONS.json](VERSIONS.json):
+The immutable platform manifests, binary layers, extracted paths, and executable hashes are recorded in [VERSIONS.json](VERSIONS.json):
 
-- `gnoland_linux_amd64`: `ef393f4e15f433cf966468fa6a8f65f1a1a69dc854f6fe843a3931a6ec0711d3`
-- `gnokey_linux_amd64`: `86be6aa70bd2c030b50823477e774c75a1f5d63d9387630eb5f39ffa1b62ae14`
+| Tool | Immutable image | Binary layer | Executable SHA-256 |
+|---|---|---|---|
+| `gno` | `ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc` | `sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff` | `423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d` |
+| `gnoland` | `ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0` | `sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63` | `5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc` |
+| `gnokey` | `ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71` | `sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352` | `2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd` |
 
 ## Getting started
 
@@ -48,9 +53,7 @@ For a local checkout, run:
 bash resources/valleyofGnoland.sh
 ```
 
-Mainnet-specific overrides are `GNOLAND_MAINNET_HOME` for the node data
-directory and `GNOLAND_MAINNET_SERVICE_NAME` for the systemd service name.
-Their defaults are `$GNO_SOURCE_DIR/gnoland-data` and `gnoland`.
+Mainnet-specific overrides are `GNOLAND_MAINNET_HOME` for the node data directory, `GNOLAND_MAINNET_SERVICE_NAME` for the systemd service name, and `GNO_BIN` for the installed `gno` path. Defaults are `$GNO_SOURCE_DIR/gnoland-data`, `gnoland`, and `$HOME/go/bin/gno`.
 
 The read-only Node Doctor can run without entering the interactive menu:
 
@@ -60,64 +63,35 @@ bash resources/valleyofGnoland.sh doctor --json
 bash resources/valleyofGnoland.sh doctor --strict
 ```
 
-### Coordinated-upgrade release identity preflight
-
-This repository also ships a read-only release-identity check for reviewing a
-`gnoland` binary before it is considered for a coordinated upgrade:
-
-```bash
-bash resources/check_release_identity.sh --binary "$HOME/go/bin/gnoland"
-bash resources/check_release_identity.sh --binary /path/to/candidate/gnoland --expect vX.Y.Z
-```
-
-The check reads the binary's own `gnoland version` output. It blocks binaries
-that report `develop`, and it can require an exact reviewed version with
-`--expect`. An `IDENTIFIED` result only proves that the artifact exposes the
-expected release identity; it does **not** prove consensus compatibility or
-replace the network's reviewed halt/restart procedure.
-
-This distinction matters because upstream now publishes both the moving
-`chain/mainnet` operator assets and the versioned `v1.2.0` release. The current
-`chain/mainnet` Linux amd64 `gnoland` and `gnokey` assets report
-`chain/mainnet.3435+139a63fe6`; `v1.2.0` is the first versioned mainnet release
-and points at the original launch commit. Valley follows the official mainnet
-validator instructions and pins the current `chain/mainnet` branch checkout plus
-the exact published asset hashes. The update command is not a generic
-coordinated-upgrade executor; consensus-changing upgrades still require a
-separately reviewed halt/version-gate procedure.
-
-Read [docs/usage.md](docs/usage.md) before using the install, update, service, or key-management options.
+Read [docs/usage.md](docs/usage.md) before using install, update, service, or key-management options.
 
 ## Install and verification policy
 
 Installation and update:
 
-1. fetch the exact reviewed source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`; movement of the upstream `chain/mainnet` branch tip is reported but does not invalidate the reviewed commit;
-2. compare the live `chain/mainnet` release digests with Valley's reviewed pins when GitHub release metadata is reachable;
-3. download the official compressed genesis, verify its compressed SHA-256, decompress it, and verify the final `genesis.json` SHA-256; and
-4. download the published Linux amd64 `gnoland` and `gnokey` assets, verify their SHA-256 values and reported release identity, then stage everything before touching the live node.
+1. fetch the exact reviewed source commit `e75fef82c02876a4df92ad6e325c5479b9532168`; later branch movement is reported and never substitutes for the reviewed pin;
+2. verify the official `chain/mainnet` release metadata and keep its launch genesis pinned to release commit `9c8eb132e483d6fd324d92c193e629ad65a98a37`;
+3. resolve each immutable GHCR platform manifest, verify its manifest digest and expected binary layer digest, extract the fixed `/usr/bin/{gno,gnoland,gnokey}` member without Docker, and verify the executable SHA-256 plus reported tool version; and
+4. stage source, tools, and compressed genesis before the transactional cutover.
 
-The branch commit and release tag commit are kept separate deliberately. The release assets identify the branch build, while `VERSIONS.json` records both the source pin and the tag metadata. No unpinned source build or unverified binary is accepted by the runtime scripts.
+`1a` uses a stage-first safe cutover. Existing validator/node secrets are preserved during a Valley-managed reinstall; a persistent backup is offered but optional. The previous runtime is retained temporarily until the replacement passes its `gnoland-1` RPC startup gate.
 
-`1a` uses a stage-first safe cutover. Existing validator/node secrets are preserved during a Valley-managed reinstall; a persistent backup is offered but is optional. The previous runtime is kept only as a temporary rollback source until the replacement node passes its `gnoland-1` RPC startup gate.
-
-`1b` is transactional. It exits without restart when the source, genesis, and binaries already match the reviewed target. When a node-runtime change is needed it stages and verifies artifacts first, stops an active service only for cutover, verifies the restarted RPC network, and restores the prior source/binaries if the health gate fails. A `gnokey`-only change does not restart `gnoland`.
+`1b` is transactional and no-op aware. It exits without restart when source, genesis, and all three tool hashes already match. A source or `gnoland` change can restart the service after staging; `gno`-only or `gnokey`-only changes do not restart `gnoland`. A failed startup/health gate restores the previous source and all previously installed tools.
 
 ## Features
 
-- Pinned `chain/mainnet` source checkout and official mainnet genesis verification.
-- Verified Linux amd64 `gnoland` and `gnokey` release assets.
+- Pinned `chain/mainnet` source checkout and official launch genesis verification.
+- Immutable GHCR OCI manifest/layer verification and Docker-free extraction of `gno`, `gnoland`, and `gnokey`.
 - Stage-first install/reinstall with optional persistent backup and validator/node identity preservation.
-- Transactional no-op-aware binary/source updates with post-restart RPC health checks and rollback.
-- Release-drift detection against current GitHub release asset digests.
+- Transactional no-op-aware source/tool updates with post-restart RPC health checks and rollback.
+- Release-drift detection against current GitHub launch-release metadata.
 - Grand Valley-managed shell-profile block that does not delete unrelated `go/bin` lines.
 - UFW setup that preserves the detected/configured SSH port and requires an explicit second confirmation.
 - Mainnet deployment path and official persistent peer configuration.
 - Isolated service ownership checks, port-prefix selection, status, logs, and key management.
 - Read-only Node Doctor with human and JSON output.
-- Read-only release-identity preflight for coordinated-upgrade review.
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
-- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with the same user-facing registration sequence as Valley of Gnoland Testnet. Local node sync is advisory rather than a transaction blocker; signer/address and on-chain registration-fee checks remain fail-closed.
+- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with signer/address and on-chain registration-fee checks fail-closed.
 
 ## Documentation
 
@@ -133,7 +107,8 @@ The branch commit and release tag commit are kept separate deliberately. The rel
 - [Gno source repository](https://github.com/gnolang/gno)
 - [`chain/mainnet` source branch](https://github.com/gnolang/gno/tree/chain/mainnet)
 - [Mainnet deployment files](https://github.com/gnolang/gno/tree/chain/mainnet/misc/deployments/mainnet.gno.land)
-- [`chain/mainnet` release](https://github.com/gnolang/gno/releases/tag/chain/mainnet)
+- [`chain/mainnet` launch release](https://github.com/gnolang/gno/releases/tag/chain/mainnet)
+- [Gno GHCR packages](https://github.com/orgs/gnolang/packages?repo_name=gno)
 
 ## Connect with Grand Valley
 

@@ -16,15 +16,23 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 The doctor checks:
 
-- the published Linux amd64 `gnoland` and `gnokey` executable hashes;
-- the pinned `chain/mainnet` source commit `00417a1be97b9a311d9669ae7aa9585b277ee594`;
-- the official mainnet genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
+- the immutable-OCI-extracted Linux amd64 `gno`, `gnoland`, and `gnokey` executable hashes;
+- the pinned `chain/mainnet` source commit `e75fef82c02876a4df92ad6e325c5479b9532168`;
+- the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
 - the two official persistent peers in `config.toml`;
 - the service unit's `gnoland-1` chain ID and mainnet startup flags;
 - local RPC network identity, node-reported `catching_up` state, current height, and live peer count;
 - the official comparison RPC network identity and its observed height relative to the local node;
 - NTP synchronization when available; and
 - a basic free-disk safety signal.
+
+The expected tool hashes are:
+
+```text
+gno      423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d
+gnoland  5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc
+gnokey   2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd
+```
 
 The height comparison is deliberately observational. It reports the raw block difference against `https://rpc.gno.land` when both endpoints identify as `gnoland-1`, but it does not invent a healthy-gap threshold or treat the comparison RPC as a canonical network-head oracle.
 
