@@ -21,6 +21,7 @@ The doctor checks:
 - the official mainnet genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
 - the two official persistent peers in `config.toml`;
 - the service unit's `gnoland-1` chain ID and mainnet startup flags;
+- the service unit's `GNOROOT` environment and `--gnoroot-dir` both point at the reviewed source checkout required by the prebuilt `gnoland` runtime;
 - local RPC network identity, node-reported `catching_up` state, current height, and live peer count;
 - the official comparison RPC network identity and its observed height relative to the local node;
 - NTP synchronization when available; and

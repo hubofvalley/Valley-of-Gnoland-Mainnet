@@ -21,7 +21,7 @@ if [ -n "${GNOLAND_NODE_DOCTOR_REF:-}" ] && [[ ! "${GNOLAND_NODE_DOCTOR_REF}" =~
 fi
 
 if [ "${1:-}" = "--version" ]; then
-    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.2.0"
+    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.3.0"
     exit 0
 fi
 
@@ -132,6 +132,13 @@ if [ -n "$service_file" ] && [ -f "$service_file" ]; then
         record PASS service_chain "systemd starts $EXPECTED_CHAIN_ID with the verified mainnet genesis"
     else
         record FAIL service_chain "systemd unit does not contain the expected mainnet startup flags"
+    fi
+
+    if grep -Fq "Environment=GNOROOT=$GNO_SOURCE_DIR" "$service_file" && \
+        grep -Fq -- "--gnoroot-dir $GNO_SOURCE_DIR" "$service_file"; then
+        record PASS service_gnoroot "systemd keeps GNOROOT aligned with the reviewed source checkout"
+    else
+        record FAIL service_gnoroot "systemd GNOROOT does not point at the reviewed source checkout $GNO_SOURCE_DIR"
     fi
 else
     record FAIL service "systemd unit for ${GNOLAND_MAINNET_SERVICE_NAME}.service was not found"
