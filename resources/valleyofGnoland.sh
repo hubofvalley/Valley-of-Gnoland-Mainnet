@@ -342,6 +342,153 @@ function get_valoper_register_fee() {
     printf '%s\n' "$fee"
 }
 
+
+function get_valoper_rotation_fee() {
+    local fee_output fee
+    fee_output=$(gnokey_cmd query vm/qeval -data 'gno.land/r/sys/params.GetValoperRotationFee()' 2>/dev/null) || return 1
+    fee=$(printf '%s\n' "$fee_output" | grep -Eo '[0-9]+[[:space:]]+uint64' | head -n 1 | awk '{print $1}')
+    [[ "$fee" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$fee"
+}
+
+function get_valoper_rotation_period_blocks() {
+    local period_output period
+    period_output=$(gnokey_cmd query vm/qeval -data 'gno.land/r/sys/params.GetValoperRotationPeriodBlocks()' 2>/dev/null) || return 1
+    period=$(printf '%s\n' "$period_output" | grep -Eo '[0-9]+[[:space:]]+int64' | head -n 1 | awk '{print $1}')
+    [[ "$period" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$period"
+}
+
+function format_ugnot_balance() {
+    local raw=$1 amount
+    amount=$(printf '%s\n' "$raw" | grep -Eo '[0-9]+ugnot' | head -n 1 | sed 's/ugnot$//')
+    if [[ "$amount" =~ ^[0-9]+$ ]]; then
+        awk -v amount="$amount" 'BEGIN { printf "%.6f GNOT (%s ugnot)\n", amount / 1000000, amount }'
+    else
+        printf '%s\n' "unavailable"
+    fi
+}
+
+function valoper_profile_output() {
+    gnokey_cmd query vm/qrender -data "gno.land/$GNOLAND_VALOPER_REALM:$1" 2>&1
+}
+
+function active_valset_output() {
+    gnokey_cmd query vm/qrender -data "gno.land/$GNOLAND_ACTIVE_REALM:" 2>&1
+}
+
+function profile_signing_pubkey() {
+    printf '%s\n' "$1" | grep -Eo 'Signing PubKey: gpub1[0-9a-z]+' | head -n 1 | awk '{print $3}'
+}
+
+function profile_signing_address() {
+    printf '%s\n' "$1" | grep -Eo 'Signing Address: g1[0-9a-z]+' | head -n 1 | awk '{print $3}'
+}
+
+VALOPER_PROFILE_QUERY_STATUS="UNKNOWN"
+VALOPER_PROFILE_QUERY_OUTPUT=""
+ACTIVE_VALIDATOR_QUERY_STATUS="UNKNOWN"
+
+function query_valoper_profile_status() {
+    local operator_addr=$1 output
+    VALOPER_PROFILE_QUERY_STATUS="UNKNOWN"
+    VALOPER_PROFILE_QUERY_OUTPUT=""
+
+    if ! output=$(valoper_profile_output "$operator_addr"); then
+        VALOPER_PROFILE_QUERY_OUTPUT=$output
+        return 1
+    fi
+    VALOPER_PROFILE_QUERY_OUTPUT=$output
+
+    if printf '%s\n' "$output" | grep -Fq "unknown address $operator_addr"; then
+        VALOPER_PROFILE_QUERY_STATUS="NO"
+        return 0
+    fi
+    if printf '%s\n' "$output" | grep -Fq "Valoper's details:" &&
+        [ -n "$(profile_signing_pubkey "$output")" ]; then
+        VALOPER_PROFILE_QUERY_STATUS="YES"
+        return 0
+    fi
+
+    return 1
+}
+
+function query_active_validator_status() {
+    local signing_addr=$1 output
+    ACTIVE_VALIDATOR_QUERY_STATUS="UNKNOWN"
+
+    [ -n "$signing_addr" ] || return 1
+    if ! output=$(active_valset_output); then
+        return 1
+    fi
+
+    if ! printf '%s\n' "$output" | grep -Fq '## Valset at height'; then
+        return 1
+    fi
+    if printf '%s\n' "$output" | grep -Fq ": $signing_addr ("; then
+        ACTIVE_VALIDATOR_QUERY_STATUS="YES"
+    else
+        ACTIVE_VALIDATOR_QUERY_STATUS="NO"
+    fi
+    return 0
+}
+
+function resolve_operator_target() {
+    local target=$1
+    if [[ "$target" =~ ^g1[0-9a-z]+$ ]]; then
+        printf '%s\n' "$target"
+        return 0
+    fi
+    operator_key_exists "$target" || return 1
+    operator_key_address "$target"
+}
+
+function broadcast_valoper_call() {
+    local key_name=$1 func_name=$2 confirm_word=$3
+    shift 3
+    local -a call_args=()
+    local arg confirm tx_status
+
+    for arg in "$@"; do
+        call_args+=( -args "$arg" )
+    done
+
+    echo -e "\n${YELLOW}Transaction preview:${RESET}"
+    printf 'gnokey maketx call \\\n'
+    printf '  --pkgpath gno.land/%s \\\n' "$GNOLAND_VALOPER_REALM"
+    printf '  --func %s \\\n' "$func_name"
+    for arg in "$@"; do
+        printf '  --args %q \\\n' "$arg"
+    done
+    printf '  --gas-fee %s --gas-wanted %s \\\n' "$VALOPER_GAS_FEE" "$VALOPER_GAS_WANTED"
+    printf '  --chainid %s --remote %s --broadcast %q\n' "$GNOLAND_CHAIN_ID" "$GNOLAND_PUBLIC_REMOTE" "$key_name"
+
+    if [ "$confirm_word" = "yes" ]; then
+        read -r -p $'\n\e[33mBroadcast this transaction? (yes/no): \e[0m' confirm
+        [[ "${confirm,,}" == "yes" ]] || { echo "Cancelled."; return 1; }
+    else
+        read -r -p "Type '$confirm_word' to broadcast: " confirm
+        [ "$confirm" = "$confirm_word" ] || { echo "Cancelled."; return 1; }
+    fi
+
+    gnokey_cmd maketx call \
+        -pkgpath "gno.land/$GNOLAND_VALOPER_REALM" \
+        -func "$func_name" \
+        "${call_args[@]}" \
+        -gas-fee "$VALOPER_GAS_FEE" \
+        -gas-wanted "$VALOPER_GAS_WANTED" \
+        -chainid "$GNOLAND_CHAIN_ID" \
+        -broadcast \
+        "$key_name"
+    tx_status=$?
+    if [ "$tx_status" -ne 0 ]; then
+        echo -e "${RED}Transaction failed. Review the gnokey output above.${RESET}"
+        return "$tx_status"
+    fi
+    echo -e "${GREEN}Transaction broadcast succeeded.${RESET}"
+    return 0
+}
+
 function get_rpc_port_from_remote() {
     local remote="${GNOLAND_REMOTE:-}"
     if [[ "$remote" =~ :([0-9]+)/?$ ]]; then
@@ -640,20 +787,157 @@ function create_operator_key() {
     menu
 }
 
+
+function local_consensus_pubkey() {
+    "$GNOLAND_BIN" secrets get --data-dir "$GNOLAND_MAINNET_HOME/secrets" validator_key 2>/dev/null |
+        grep -Eo 'gpub1[0-9a-z]+' | head -n 1
+}
+
 function show_validator_pubkey() {
-    echo -e "${CYAN}Your local consensus public key:${RESET}"
-    "$GNOLAND_BIN" secrets get --data-dir "$GNOLAND_MAINNET_HOME/secrets" validator_key
-    echo -e "\n${YELLOW}Use the displayed value only with a separately verified mainnet procedure. Press Enter to go back.${RESET}"
+    local key_name operator_addr local_pubkey profile registered_pubkey signing_addr candidate_status active_status identity_status
+
+    echo -e "${CYAN}Validator Identity & Status${RESET}"
+    local_pubkey=$(local_consensus_pubkey || true)
+    read -r -p "Enter operator key name (default 'operator'): " key_name
+    key_name=${key_name:-operator}
+    if ! operator_key_exists "$key_name"; then
+        echo "Local consensus pubkey: ${local_pubkey:-unavailable}"
+        echo -e "${YELLOW}Operator key '$key_name' was not found, so on-chain operator/candidate correlation is unavailable.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    operator_addr=$(operator_key_address "$key_name")
+    profile=""
+    registered_pubkey=""
+    signing_addr=""
+    candidate_status="UNKNOWN"
+    active_status="UNKNOWN"
+    identity_status="UNKNOWN"
+
+    if query_valoper_profile_status "$operator_addr"; then
+        profile=$VALOPER_PROFILE_QUERY_OUTPUT
+        candidate_status=$VALOPER_PROFILE_QUERY_STATUS
+    fi
+    if [ "$candidate_status" = "YES" ]; then
+        registered_pubkey=$(profile_signing_pubkey "$profile")
+        signing_addr=$(profile_signing_address "$profile")
+        if query_active_validator_status "$signing_addr"; then
+            active_status=$ACTIVE_VALIDATOR_QUERY_STATUS
+        fi
+        if [ -n "$local_pubkey" ]; then
+            if [ "$local_pubkey" = "$registered_pubkey" ]; then
+                identity_status="MATCH"
+            else
+                identity_status="MISMATCH"
+            fi
+        fi
+    elif [ "$candidate_status" = "NO" ]; then
+        identity_status="N/A"
+    fi
+
+    echo
+    echo "Network:                $GNOLAND_CHAIN_ID"
+    echo "Operator key:           $key_name"
+    echo "Operator address:       ${operator_addr:-unavailable}"
+    echo "Local consensus pubkey: ${local_pubkey:-unavailable}"
+    echo "Candidate registered:   $candidate_status"
+    echo "Active validator:       $active_status"
+    echo "Registered pubkey:      ${registered_pubkey:-unavailable}"
+    echo "Signing address:        ${signing_addr:-unavailable}"
+    echo "Identity check:         $identity_status"
+
+    if [ "$candidate_status" = "UNKNOWN" ]; then
+        echo "Candidate status is UNKNOWN because the valoper profile query could not be verified."
+    fi
+    if [ "$candidate_status" = "YES" ] && [ "$active_status" = "UNKNOWN" ]; then
+        echo "Active-validator status is UNKNOWN because the validator-set query could not be verified."
+    fi
+    if [ "$identity_status" = "MISMATCH" ]; then
+        echo -e "${RED}WARNING: local consensus key does not match the valoper profile signing key.${RESET}"
+        echo -e "${YELLOW}Do not assume this node can safely sign for the registered validator until the mismatch is understood.${RESET}"
+    fi
+    echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+    read -r
+    menu
+}
+
+function show_account_dashboard() {
+    local target operator_addr key_label balance_output account_output gas_output register_fee rotation_fee rotation_period
+    local account_number sequence profile registered_pubkey signing_addr candidate_status active_status
+
+    echo -e "${CYAN}Account & Balance Dashboard${RESET}"
+    read -r -p "Enter local key name or g1... address (default 'operator'): " target
+    target=${target:-operator}
+    if ! operator_addr=$(resolve_operator_target "$target"); then
+        echo -e "${RED}Could not resolve '$target' as a local key or g1... address.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    key_label="$target"
+    [[ "$target" =~ ^g1 ]] && key_label="address-only"
+
+    balance_output=$(gnokey_cmd query "bank/balances/$operator_addr" 2>&1 || true)
+    account_output=$(gnokey_cmd query "auth/accounts/$operator_addr" 2>&1 || true)
+    gas_output=$(gnokey_cmd query auth/gasprice 2>&1 || true)
+    register_fee=$(get_valoper_register_fee 2>/dev/null || echo unavailable)
+    rotation_fee=$(get_valoper_rotation_fee 2>/dev/null || echo unavailable)
+    rotation_period=$(get_valoper_rotation_period_blocks 2>/dev/null || echo unavailable)
+    account_number=$(printf '%s\n' "$account_output" | sed -n 's/.*"account_number"[[:space:]]*:[[:space:]]*"\([0-9][0-9]*\)".*/\1/p' | head -n 1)
+    sequence=$(printf '%s\n' "$account_output" | sed -n 's/.*"sequence"[[:space:]]*:[[:space:]]*"\([0-9][0-9]*\)".*/\1/p' | head -n 1)
+    profile=""
+    registered_pubkey=""
+    signing_addr=""
+    candidate_status="UNKNOWN"
+    active_status="UNKNOWN"
+    if query_valoper_profile_status "$operator_addr"; then
+        profile=$VALOPER_PROFILE_QUERY_OUTPUT
+        candidate_status=$VALOPER_PROFILE_QUERY_STATUS
+    fi
+    if [ "$candidate_status" = "YES" ]; then
+        registered_pubkey=$(profile_signing_pubkey "$profile")
+        signing_addr=$(profile_signing_address "$profile")
+        if query_active_validator_status "$signing_addr"; then
+            active_status=$ACTIVE_VALIDATOR_QUERY_STATUS
+        fi
+    fi
+
+    echo
+    echo "Network:                $GNOLAND_CHAIN_ID"
+    echo "Target:                 $key_label"
+    echo "Address:                $operator_addr"
+    echo "Balance:                $(format_ugnot_balance "$balance_output")"
+    echo "Account number:         ${account_number:-unavailable}"
+    echo "Sequence:               ${sequence:-unavailable}"
+    echo "Minimum gas price:"
+    printf '%s\n' "$gas_output" | sed 's/^/  /'
+    echo "Valoper candidate:      $candidate_status"
+    echo "Active validator:       $active_status"
+    echo "Registered signing key: ${registered_pubkey:-unavailable}"
+    echo "Register fee:           ${register_fee} ugnot"
+    echo "Rotation fee:           ${rotation_fee} ugnot"
+    echo "Rotation period:        ${rotation_period} blocks"
+    if [ "$candidate_status" = "UNKNOWN" ]; then
+        echo "Candidate status is UNKNOWN because the valoper profile query could not be verified."
+    fi
+    if [ "$candidate_status" = "YES" ] && [ "$active_status" = "UNKNOWN" ]; then
+        echo "Active-validator status is UNKNOWN because the validator-set query could not be verified."
+    fi
+    echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
     read -r
     menu
 }
 
 function register_valoper_candidate() {
-    local register_fee derived_operator_addr tx_status
+    local register_fee derived_operator_addr tx_status profile balance_output
+
 
     echo -e "${CYAN}Register Gno.land Mainnet Valoper Candidate${RESET}"
     echo -e "${YELLOW}This broadcasts a transaction. It creates a candidate profile only, not active validator status.${RESET}"
-    echo -e "${YELLOW}Requirements: synced node, funded operator key, and consensus gpub1... from option 2b.${RESET}"
+    echo -e "${YELLOW}Node sync is recommended operationally, but local RPC sync is not a transaction blocker.${RESET}"
     if ! prompt_back_or_continue; then
         return
     fi
@@ -666,10 +950,6 @@ function register_valoper_candidate() {
     read -r -p "Enter operator g1... address: " OPERATOR_ADDR
     read -r -p "Enter consensus gpub1... public key: " CONSENSUS_PUBKEY
 
-    # Upstream recommends completing node sync before validator onboarding, but
-    # candidate registration itself is signed with gnokey and broadcast through
-    # the configured public mainnet RPC. Local RPC availability/sync state is
-    # therefore advisory and must not create a false registration blocker.
     if ! operator_key_exists "$KEY_NAME"; then
         echo -e "${RED}Operator key '$KEY_NAME' was not found in $GNOKEY_HOME.${RESET}"
         echo -e "${YELLOW}Create/recover it with option 2a, then retry.${RESET}"
@@ -687,7 +967,6 @@ function register_valoper_candidate() {
         menu
         return
     fi
-
     case "$INFRA_TYPE" in
         cloud|on-prem|data-center) ;;
         *)
@@ -698,6 +977,14 @@ function register_valoper_candidate() {
             return
             ;;
     esac
+    if [ -z "$MONIKER" ] || [ "${#MONIKER}" -gt 32 ] || [ -z "$DESCRIPTION" ] || [ "${#DESCRIPTION}" -gt 2048 ]; then
+        echo -e "${RED}Moniker/description violates the valoper realm length requirements.${RESET}"
+        echo -e "${YELLOW}Moniker: 1-32 chars. Description: 1-2048 chars.${RESET}"
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
     if [[ ! "$OPERATOR_ADDR" =~ ^g1[0-9a-z]+$ ]] || [[ ! "$CONSENSUS_PUBKEY" =~ ^gpub1[0-9a-z]+$ ]]; then
         echo -e "${RED}Operator address or consensus public key has an invalid format.${RESET}"
         echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
@@ -708,7 +995,6 @@ function register_valoper_candidate() {
 
     if ! register_fee=$(get_valoper_register_fee); then
         echo -e "${RED}Registration blocked: current on-chain valoper registration fee could not be verified.${RESET}"
-        echo "The tool will not guess a payment amount or broadcast an unverified paid call."
         echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
         read -r
         menu
@@ -716,17 +1002,47 @@ function register_valoper_candidate() {
     fi
     if [ "$register_fee" -ne 0 ]; then
         echo -e "${RED}Registration blocked: the current on-chain valoper registration fee is ${register_fee} ugnot.${RESET}"
-        echo "Review the current official mainnet procedure before registering."
+        echo "Valley will not guess or attach a payment amount to this call."
         echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
         read -r
         menu
         return
     fi
 
+    if ! query_valoper_profile_status "$OPERATOR_ADDR"; then
+        echo "Registration blocked: candidate profile status could not be verified from the configured public RPC."
+        echo "Valley will not treat an RPC or realm query failure as Candidate exists: NO."
+        echo "Retry after the read-only profile query is healthy."
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+    profile=$VALOPER_PROFILE_QUERY_OUTPUT
+    if [ "$VALOPER_PROFILE_QUERY_STATUS" = "YES" ]; then
+        echo "Registration blocked: this operator address already has a valoper profile."
+        printf '%s\n' "$profile"
+        echo "Use option 2e to manage the existing profile."
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+    if [ "$VALOPER_PROFILE_QUERY_STATUS" != "NO" ]; then
+        echo "Registration blocked: candidate profile status is UNKNOWN."
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+    balance_output=$(gnokey_cmd query "bank/balances/$OPERATOR_ADDR" 2>&1 || true)
+    echo -e "\n${CYAN}Registration preflight${RESET}"
+    echo "Signer/address match: OK"
+    echo "Candidate exists:     NO"
+    echo "Register fee:         ${register_fee} ugnot"
+    echo "Operator balance:     $(format_ugnot_balance "$balance_output")"
+
     echo -e "\n${YELLOW}Transaction preview:${RESET}"
     cat <<EOF
 gnokey maketx call \\
-  --pkgpath gno.land/r/gnops/valopers \\
+  --pkgpath gno.land/$GNOLAND_VALOPER_REALM \\
   --func Register \\
   --args "$MONIKER" \\
   --args "$DESCRIPTION" \\
@@ -747,7 +1063,7 @@ EOF
     fi
 
     gnokey_cmd maketx call \
-        -pkgpath gno.land/r/gnops/valopers \
+        -pkgpath "gno.land/$GNOLAND_VALOPER_REALM" \
         -func Register \
         -args "$MONIKER" \
         -args "$DESCRIPTION" \
@@ -770,42 +1086,221 @@ EOF
         return
     fi
 
-    echo -e "\n${GREEN}Candidate registration submitted if broadcast succeeded.${RESET}"
-    echo -e "${YELLOW}Next gate: GovDAO proposal approval via ${GNOLAND_ACTIVE_REALM}.${RESET}"
+    echo -e "\n${GREEN}Candidate registration transaction broadcast succeeded.${RESET}"
+    echo -e "${YELLOW}Next gate: GovDAO proposal approval via $GNOLAND_ACTIVE_REALM.${RESET}"
     echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
     read -r
     menu
 }
 
-function query_balance_or_realm() {
-    echo "Choose an option:"
-    echo "1. Query an ABCI path manually"
-    echo "2. Show verified Gno.land links"
-    echo "3. Back"
+function manage_valoper_profile() {
+    local key_name operator_addr profile choice value keep_running
+    echo -e "${CYAN}Manage Valoper Profile${RESET}"
+    read -r -p "Enter operator key name (default 'operator'): " key_name
+    key_name=${key_name:-operator}
+    if ! operator_key_exists "$key_name"; then
+        echo -e "${RED}Operator key '$key_name' was not found.${RESET}"
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+    operator_addr=$(operator_key_address "$key_name")
+    if ! query_valoper_profile_status "$operator_addr"; then
+        echo "Valoper profile status is UNKNOWN because the read-only query could not be verified."
+        echo "No profile-changing transaction will be prepared."
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+    profile=$VALOPER_PROFILE_QUERY_OUTPUT
+    if [ "$VALOPER_PROFILE_QUERY_STATUS" = "NO" ]; then
+        echo -e "${RED}No valoper profile found for $operator_addr.${RESET}"
+        echo -e "${YELLOW}Use option 2c to register first.${RESET}"
+        read -r -p "Press Enter to go back to main menu"
+        menu
+        return
+    fi
+
+    echo
+    echo "1. Show current profile"
+    echo "2. Update moniker"
+    echo "3. Update description"
+    echo "4. Update server type"
+    echo "5. Update KeepRunning status"
+    echo "6. Back"
     read -r -p "Enter your choice: " choice
-    case $choice in
+    case "$choice" in
         1)
-            read -r -p "Enter ABCI query path: " path
-            gnokey_cmd query "$path"
+            printf '%s\n' "$profile"
             ;;
         2)
-            echo "Web: https://gno.land"
-            echo "RPC: https://rpc.gno.land"
-            echo "Faucet: none (mainnet has no public faucet)"
-            echo "Active validator realm: $GNOLAND_ACTIVE_REALM"
+            read -r -p "Enter new moniker: " value
+            if [ -z "$value" ] || [ "${#value}" -gt 32 ]; then
+                echo -e "${RED}Moniker must be 1-32 characters.${RESET}"
+            else
+                broadcast_valoper_call "$key_name" UpdateMoniker yes "$operator_addr" "$value" || true
+            fi
             ;;
         3)
-            menu
-            return
+            read -r -p "Enter new description: " value
+            if [ -z "$value" ] || [ "${#value}" -gt 2048 ]; then
+                echo -e "${RED}Description must be 1-2048 characters.${RESET}"
+            else
+                broadcast_valoper_call "$key_name" UpdateDescription yes "$operator_addr" "$value" || true
+            fi
             ;;
-        *)
-            echo "Invalid choice."
+        4)
+            read -r -p "Enter server type (cloud/on-prem/data-center): " value
+            case "$value" in
+                cloud|on-prem|data-center) broadcast_valoper_call "$key_name" UpdateServerType yes "$operator_addr" "$value" || true ;;
+                *) echo -e "${RED}Invalid server type.${RESET}" ;;
+            esac
             ;;
+        5)
+            read -r -p "Set KeepRunning to true or false: " keep_running
+            case "$keep_running" in
+                true|false)
+                    echo -e "${YELLOW}KeepRunning affects whether this valoper wants to remain in the active set.${RESET}"
+                    broadcast_valoper_call "$key_name" UpdateKeepRunning KEEP-RUNNING "$operator_addr" "$keep_running" || true
+                    ;;
+                *) echo -e "${RED}Value must be exactly true or false.${RESET}" ;;
+            esac
+            ;;
+        6) menu; return ;;
+        *) echo "Invalid choice." ;;
     esac
     echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
     read -r
     menu
 }
+
+function advanced_validator_operations() {
+    local key_name operator_addr profile rotation_fee rotation_period new_pubkey choice local_pubkey
+    echo -e "${CYAN}Advanced Validator Operations${RESET}"
+    echo "1. Show valoper/rotation parameters"
+    echo "2. Rotate consensus signing key"
+    echo "3. Back"
+    read -r -p "Enter your choice: " choice
+    case "$choice" in
+        1)
+            read -r -p "Enter operator key name (default 'operator'): " key_name
+            key_name=${key_name:-operator}
+            if operator_key_exists "$key_name"; then
+                operator_addr=$(operator_key_address "$key_name")
+                if query_valoper_profile_status "$operator_addr"; then
+                    if [ "$VALOPER_PROFILE_QUERY_STATUS" = "YES" ]; then
+                        printf '%s\n' "$VALOPER_PROFILE_QUERY_OUTPUT"
+                    else
+                        echo "Valoper profile: not registered"
+                    fi
+                else
+                    echo "Valoper profile: UNKNOWN (read-only query could not be verified)"
+                fi
+            else
+                echo -e "${RED}Operator key '$key_name' was not found.${RESET}"
+            fi
+            echo "Rotation fee: $(get_valoper_rotation_fee 2>/dev/null || echo unavailable) ugnot"
+            echo "Rotation period: $(get_valoper_rotation_period_blocks 2>/dev/null || echo unavailable) blocks"
+            ;;
+        2)
+            read -r -p "Enter operator key name (default 'operator'): " key_name
+            key_name=${key_name:-operator}
+            if ! operator_key_exists "$key_name"; then
+                echo -e "${RED}Operator key '$key_name' was not found.${RESET}"
+            else
+                operator_addr=$(operator_key_address "$key_name")
+                if ! query_valoper_profile_status "$operator_addr"; then
+                    echo "Rotation blocked: valoper profile status is UNKNOWN because the read-only query could not be verified."
+                elif [ "$VALOPER_PROFILE_QUERY_STATUS" = "NO" ]; then
+                    echo "No valoper profile found for $operator_addr."
+                else
+                    profile=$VALOPER_PROFILE_QUERY_OUTPUT
+                    rotation_fee=$(get_valoper_rotation_fee 2>/dev/null || echo unavailable)
+                    rotation_period=$(get_valoper_rotation_period_blocks 2>/dev/null || echo unavailable)
+                    if ! [[ "$rotation_fee" =~ ^[0-9]+$ ]]; then
+                        echo -e "${RED}Rotation blocked: current on-chain rotation fee could not be verified.${RESET}"
+                    elif [ "$rotation_fee" -ne 0 ]; then
+                        echo "Rotation blocked: current on-chain rotation fee is $rotation_fee ugnot."
+                        echo "Valley will not guess or attach a payment amount to this high-impact call."
+                    elif ! [[ "$rotation_period" =~ ^[0-9]+$ ]]; then
+                        echo "Rotation blocked: current on-chain rotation period could not be verified."
+                    else
+                        local_pubkey=$(local_consensus_pubkey || true)
+                        echo "Current profile:"
+                        printf '%s\n' "$profile"
+                        echo "Local consensus pubkey: ${local_pubkey:-unavailable}"
+                        echo "Rotation throttle: ${rotation_period} blocks"
+                        read -r -p "Enter NEW consensus gpub1... public key: " new_pubkey
+                        if [[ ! "$new_pubkey" =~ ^gpub1[0-9a-z]+$ ]]; then
+                            echo -e "${RED}Invalid consensus public key format.${RESET}"
+                        elif [ "$new_pubkey" = "$(profile_signing_pubkey "$profile")" ]; then
+                            echo -e "${RED}New signing key is identical to the currently registered key.${RESET}"
+                        else
+                            echo -e "${RED}HIGH IMPACT: UpdateSigningKey changes the consensus signing identity. The realm applies the rotation to consensus after the on-chain transition.${RESET}"
+                            echo -e "${YELLOW}Confirm the new private validator key is safely installed on the intended node before using this.${RESET}"
+                            broadcast_valoper_call "$key_name" UpdateSigningKey ROTATE "$operator_addr" "$new_pubkey" || true
+                        fi
+                    fi
+                fi
+            fi
+            ;;
+        3) menu; return ;;
+        *) echo "Invalid choice." ;;
+    esac
+    echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+    read -r
+    menu
+}
+
+function advanced_query_inspector() {
+    local choice path data
+    echo -e "${CYAN}Advanced Read-only Query / Realm Inspector${RESET}"
+    echo "1. Query arbitrary ABCI path"
+    echo "2. Render realm/path (vm/qrender)"
+    echo "3. List exported functions (vm/qfuncs)"
+    echo "4. Show realm/package docs (vm/qdoc)"
+    echo "5. Evaluate read-only expression (vm/qeval)"
+    echo "6. Show realm storage/deposit (vm/qstorage)"
+    echo "7. Search package/realm paths (vm/qpaths)"
+    echo "8. Back"
+    read -r -p "Enter your choice: " choice
+    case "$choice" in
+        1)
+            read -r -p "Enter ABCI query path: " path
+            gnokey_cmd query "$path"
+            ;;
+        2)
+            read -r -p "Enter pkgpath[:render-path]: " data
+            gnokey_cmd query vm/qrender -data "$data"
+            ;;
+        3)
+            read -r -p "Enter package/realm path: " data
+            gnokey_cmd query vm/qfuncs -data "$data"
+            ;;
+        4)
+            read -r -p "Enter package/realm path: " data
+            gnokey_cmd query vm/qdoc -data "$data"
+            ;;
+        5)
+            read -r -p "Enter full read-only expression (for example gno.land/r/sys/params.GetValoperRegisterFee()): " data
+            gnokey_cmd query vm/qeval -data "$data"
+            ;;
+        6)
+            read -r -p "Enter realm path: " data
+            gnokey_cmd query vm/qstorage -data "$data"
+            ;;
+        7)
+            read -r -p "Enter path prefix (for example gno.land/r/gnops): " data
+            gnokey_cmd query 'vm/qpaths?limit=100' -data "$data"
+            ;;
+        8) menu; return ;;
+        *) echo "Invalid choice." ;;
+    esac
+    echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+    read -r
+    menu
+}
+
 
 function backup_node_secrets() {
     if [ -d "$GNOLAND_MAINNET_HOME/secrets" ]; then
@@ -943,11 +1438,14 @@ function menu() {
     echo "   1f. Show Node Logs"
     echo "   1g. Run Node Doctor (Read-only)"
     echo
-    echo "2. Validator/Key Interactions"
-    echo "   2a. Reuse/Recover/Create Operator Key"
-    echo "   2b. Show Validator Consensus Pubkey"
+    echo "2. Validator/Key/Account Interactions"
+    echo "   2a. Operator Key Manager"
+    echo "   2b. Validator Identity & Status"
     echo "   2c. Mainnet Validator Registration"
-    echo "   2d. Query / Show Mainnet Links"
+    echo "   2d. Account & Balance Dashboard"
+    echo "   2e. Manage Valoper Profile"
+    echo "   2f. Advanced Validator Operations"
+    echo "   2g. Advanced Query / Realm Inspector"
     echo
     echo "3. Node Management"
     echo "   3a. Restart Gnoland Node"
@@ -977,7 +1475,10 @@ function menu() {
         2a|2-a) create_operator_key ;;
         2b|2-b) show_validator_pubkey ;;
         2c|2-c) register_valoper_candidate ;;
-        2d|2-d) query_balance_or_realm ;;
+        2d|2-d) show_account_dashboard ;;
+        2e|2-e) manage_valoper_profile ;;
+        2f|2-f) advanced_validator_operations ;;
+        2g|2-g) advanced_query_inspector ;;
         3a|3-a) restart_gnoland ;;
         3b|3-b) stop_gnoland ;;
         3c|3-c) delete_gnoland_node ;;
