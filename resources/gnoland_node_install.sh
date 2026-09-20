@@ -206,6 +206,31 @@ verify_reported_version() {
     echo -e "${GREEN}Verified $label reported version: $version${RESET}"
 }
 
+verify_staged_gno_runtime() {
+    local binary=$1 gnoroot=$2 smoke_dir output
+    smoke_dir="$TMP_DIR/gno-runtime-smoke"
+    rm -rf "$smoke_dir"
+    mkdir -p "$smoke_dir"
+    cat > "$smoke_dir/main.gno" <<'EOF_GNO_RUNTIME_SMOKE'
+package main
+
+func main() {
+	println("gno-runtime-ok")
+}
+EOF_GNO_RUNTIME_SMOKE
+
+    if ! output=$(cd "$TMP_DIR" && GNOROOT="$gnoroot" "$binary" run "$smoke_dir/main.gno" 2>&1); then
+        echo "Staged gno runtime smoke test failed against the reviewed GNOROOT." >&2
+        printf '%s\n' "$output" >&2
+        return 1
+    fi
+    if [ "$output" != "gno-runtime-ok" ]; then
+        echo "Staged gno runtime smoke test returned unexpected output: $output" >&2
+        return 1
+    fi
+    echo -e "${GREEN}Verified staged gno can compile and run against the reviewed GNOROOT.${RESET}"
+}
+
 stage_oci_binary() {
     local label=$1 repository=$2 manifest_digest=$3 layer_digest=$4 binary_path=$5 expected_sha=$6 output=$7
     local token manifest_file layer_file binary_file tar_path
@@ -444,6 +469,7 @@ stage_oci_binary gnoland "$GNOLAND_IMAGE_REPOSITORY" "$GNOLAND_IMAGE_MANIFEST_DI
 verify_reported_version "$TMP_DIR/gnoland" "gnoland" gnoland
 stage_oci_binary gnokey "$GNOKEY_IMAGE_REPOSITORY" "$GNOKEY_IMAGE_MANIFEST_DIGEST" "$GNOKEY_BINARY_LAYER_DIGEST" "$GNOKEY_BINARY_PATH" "$GNOKEY_BIN_SHA256" "$TMP_DIR/gnokey"
 verify_reported_version "$TMP_DIR/gnokey" "gnokey" gnokey
+verify_staged_gno_runtime "$TMP_DIR/gno" "$TMP_DIR/stage-source"
 curl -fsSL "$GENESIS_GZ_URL" -o "$TMP_DIR/genesis.json.gz"
 printf '%s  %s\n' "$GENESIS_GZ_SHA256" "$TMP_DIR/genesis.json.gz" | sha256sum --check - >/dev/null
 gzip -dc "$TMP_DIR/genesis.json.gz" > "$TMP_DIR/genesis.json"

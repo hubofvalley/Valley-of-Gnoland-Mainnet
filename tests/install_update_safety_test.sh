@@ -27,6 +27,19 @@ if [ -z "$update_stage_line" ] || [ -z "$update_cutover_line" ]; then
 fi
 [ "$update_stage_line" -lt "$update_cutover_line" ] || fail "updater cutover begins before staging completes"
 
+for script in "$INSTALLER" "$UPDATER"; do
+    rel=${script#"$ROOT"/}
+    grep -Fq 'verify_staged_gno_runtime()' "$script" || fail "staged gno runtime preflight missing in $rel"
+    grep -Fq 'GNOROOT="$gnoroot" "$binary" run "$smoke_dir/main.gno"' "$script" ||
+        fail "staged gno runtime preflight does not bind the reviewed GNOROOT in $rel"
+    smoke_line=$(line_of 'verify_staged_gno_runtime "$TMP_DIR/gno" "$TMP_DIR/stage-source"' "$script")
+    [ -n "$smoke_line" ] || fail "staged gno runtime preflight call missing in $rel"
+    case "$script" in
+        "$INSTALLER") [ "$smoke_line" -lt "$install_cutover_line" ] || fail "installer runtime preflight runs after cutover" ;;
+        "$UPDATER") [ "$smoke_line" -lt "$update_cutover_line" ] || fail "updater runtime preflight runs after cutover" ;;
+    esac
+done
+
 grep -Fq 'Create a persistent backup of existing node secrets and operator keyring first? (Y/n): ' "$INSTALLER" ||
     fail "installer does not ask whether to create a persistent backup"
 grep -Fq 'Persistent backup skipped by operator choice.' "$INSTALLER" ||
