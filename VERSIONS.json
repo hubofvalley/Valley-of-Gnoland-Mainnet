@@ -7,9 +7,9 @@
   "release_tag_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
   "genesis_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
   "release_url": "https://github.com/gnolang/gno/releases/tag/chain/mainnet",
-  "versioned_release_tag": "v1.2.0",
-  "versioned_release_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
-  "versioned_release_url": "https://github.com/gnolang/gno/releases/tag/v1.2.0",
+  "versioned_release_tag": "v1.5.0",
+  "versioned_release_commit": "e75fef82c02876a4df92ad6e325c5479b9532168",
+  "versioned_release_url": "https://github.com/gnolang/gno/releases/tag/v1.5.0",
   "source_branch": "chain/mainnet",
   "source_commit": "e75fef82c02876a4df92ad6e325c5479b9532168",
   "source_branch_commit": "e75fef82c02876a4df92ad6e325c5479b9532168",
@@ -27,42 +27,47 @@
   "oci_images": {
     "registry": "ghcr.io",
     "platform": "linux/amd64",
-    "reported_version": "heads/chain/mainnet.3444+e75fef82c",
+    "reported_version": "v1.5.0",
     "gno": {
-      "image": "ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc",
-      "manifest_digest": "sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc",
-      "binary_layer_digest": "sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff",
+      "image": "ghcr.io/gnolang/gno/gno@sha256:e9ad26286c98a1ab7fdddc59f478a13eda1abba80123fd18a8d46e0f3944036c",
+      "manifest_digest": "sha256:e9ad26286c98a1ab7fdddc59f478a13eda1abba80123fd18a8d46e0f3944036c",
+      "binary_layer_digest": "sha256:b00b81b81eb1b2e1336abf3571be1c5de3f0b304e68025134f21ab203c145656",
       "binary_path": "/usr/bin/gno",
-      "binary_sha256": "423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
+      "binary_sha256": "a72b09348a7448fb83d1f608ecfefd044e8d12df4c0c70300c35453482edd7e4"
     },
     "gnoland": {
-      "image": "ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0",
-      "manifest_digest": "sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0",
-      "binary_layer_digest": "sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63",
+      "image": "ghcr.io/gnolang/gno/gnoland@sha256:70f465a64dbe16e6e93e225967b5c1643d95f3361ef8edfd261445b7a870494d",
+      "manifest_digest": "sha256:70f465a64dbe16e6e93e225967b5c1643d95f3361ef8edfd261445b7a870494d",
+      "binary_layer_digest": "sha256:e9a097249a947328c93223f9be06961b128ed8fdbfb537e767d73b9bebcd0d51",
       "binary_path": "/usr/bin/gnoland",
-      "binary_sha256": "5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
+      "binary_sha256": "f88af6fd5485fe84ed6787fc06a19b07b4bf11aebb49f296c62990ffdd9a9765"
     },
     "gnokey": {
-      "image": "ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71",
-      "manifest_digest": "sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71",
-      "binary_layer_digest": "sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352",
+      "image": "ghcr.io/gnolang/gno/gnokey@sha256:23f51c151b02776cee8ee8fbb799ff7bade7aea049d05563b126d196c1cdb0c0",
+      "manifest_digest": "sha256:23f51c151b02776cee8ee8fbb799ff7bade7aea049d05563b126d196c1cdb0c0",
+      "binary_layer_digest": "sha256:79304ee04a936f559911c47d79dff8ccb1ce455387e7dc561ead36dcf8512ca8",
       "binary_path": "/usr/bin/gnokey",
-      "binary_sha256": "2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
+      "binary_sha256": "f90bb28057eaae6301e58f7ce7dc2bed988d70be5f5e9d54aec2580d71b586b4"
     }
   },
   "versioned_binary_assets": {
-    "base_url": "https://github.com/gnolang/gno/releases/download/v1.2.0",
+    "base_url": "https://github.com/gnolang/gno/releases/download/v1.5.0",
     "platform": "linux_amd64",
-    "checksums_sha256": "3f79dc4102c5ad9dd37a6f53adb294f13797f73e1c856ff0f77b3d6773d62078",
+    "checksums_sha256": "e13aa266c94c8fd122a58725021cb2d1988c092c76d6cab73a8f06e0a7265ede",
+    "gno": {
+      "asset": "gno_linux_amd64",
+      "sha256": "664d1605ef8b451c5eac7c98007bf1bb955b1bce12afe42da9c2684a988e6909",
+      "reported_version": "v1.5.0"
+    },
     "gnoland": {
       "asset": "gnoland_linux_amd64",
-      "sha256": "02151e2f21988fa41e62fda0eab617fafc21c3c5fd2f51b0061c382f625e6813",
-      "reported_version": "v1.2.0"
+      "sha256": "8dcff48228a881e398d238e3e14760c175c872fb164e85f21e5b4ee94a8b076d",
+      "reported_version": "v1.5.0"
     },
     "gnokey": {
       "asset": "gnokey_linux_amd64",
-      "sha256": "b0ab64292328651928186715c438e224f9f77ca105400de8e7176d010483754a",
-      "reported_version": "v1.2.0"
+      "sha256": "878eb6599161f491a37fdcbd4214477ad28d5d6208f8428f0bffcd3115cd35b4",
+      "reported_version": "v1.5.0"
     }
   },
   "endpoints": {
@@ -93,5 +98,5 @@
     "source": "misc/deployments/mainnet.gno.land/VALIDATOR.md"
   },
   "verification_status": "verified_facts_only",
-  "last_reviewed": "2026-09-19"
+  "last_reviewed": "2026-09-23"
 }
