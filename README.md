@@ -91,7 +91,7 @@ Installation and update:
 - Isolated service ownership checks, port-prefix selection, status, logs, and key management.
 - Read-only Node Doctor with human and JSON output.
 - Fail-closed snapshot option until a provider is verified for `gnoland-1`.
-- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with signer/address and on-chain registration-fee checks fail-closed.
+- Mainnet valoper-candidate registration using the verified upstream `r/gnops/valopers.Register` procedure, with signer/address and on-chain registration-fee checks fail-closed plus a simulation-derived gas quote before broadcast.
 
 ## Validator / Key / Account Console
 
