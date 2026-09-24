@@ -25,8 +25,8 @@ readonly GNOKEY_IMAGE_REF="ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7c
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
-readonly VALOPER_GAS_FEE="1000000ugnot"
-readonly VALOPER_GAS_WANTED=50000000
+readonly VALOPER_SIMULATION_GAS_FEE="1000000ugnot"
+readonly VALOPER_SIMULATION_GAS_WANTED=50000000
 readonly VALLEY_RUNTIME_REF="35196270ea330dde87b3bc4baf18686e16a2cd19"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
@@ -443,15 +443,69 @@ function resolve_operator_target() {
     operator_key_address "$target"
 }
 
-function broadcast_valoper_call() {
-    local key_name=$1 func_name=$2 confirm_word=$3
-    shift 3
+function parse_valoper_simulation_quote() {
+    local output=$1 gas_wanted gas_fee
+
+    gas_wanted=$(printf '%s\n' "$output" | sed -nE 's/.*suggested, with 5% margin: ([0-9]+).*/\1/p' | tail -n 1)
+    gas_fee=$(printf '%s\n' "$output" | sed -nE 's/.*gas fee: ([0-9]+[[:alpha:]][[:alnum:]]*).*/\1/p' | tail -n 1)
+
+    [[ "$gas_wanted" =~ ^[0-9]+$ ]] || return 1
+    [[ "$gas_fee" =~ ^[0-9]+[[:alpha:]][[:alnum:]]*$ ]] || return 1
+
+    VALOPER_QUOTED_GAS_WANTED=$gas_wanted
+    VALOPER_QUOTED_GAS_FEE=$gas_fee
+}
+
+function quote_valoper_call() {
+    local key_name=$1 func_name=$2
+    shift 2
     local -a call_args=()
-    local arg confirm tx_status
+    local arg output
 
     for arg in "$@"; do
         call_args+=( -args "$arg" )
     done
+
+    echo -e "\n${CYAN}Simulating transaction for current gas usage and network gas price...${RESET}"
+    if ! output=$(gnokey_cmd maketx call \
+        -pkgpath "gno.land/$GNOLAND_VALOPER_REALM" \
+        -func "$func_name" \
+        "${call_args[@]}" \
+        -gas-fee "$VALOPER_SIMULATION_GAS_FEE" \
+        -gas-wanted "$VALOPER_SIMULATION_GAS_WANTED" \
+        -chainid "$GNOLAND_CHAIN_ID" \
+        -simulate only \
+        "$key_name"); then
+        printf '%s\n' "$output"
+        echo -e "${RED}Transaction simulation failed. Nothing was broadcast.${RESET}"
+        return 1
+    fi
+
+    if ! parse_valoper_simulation_quote "$output"; then
+        printf '%s\n' "$output"
+        echo -e "${RED}Simulation completed, but the recommended gas quote could not be verified. Nothing was broadcast.${RESET}"
+        return 1
+    fi
+
+    echo "Quoted gas wanted: $VALOPER_QUOTED_GAS_WANTED"
+    echo "Quoted gas fee:    $VALOPER_QUOTED_GAS_FEE"
+}
+
+function broadcast_valoper_call() {
+    local key_name=$1 func_name=$2 confirm_word=$3
+    shift 3
+    local -a call_args=()
+    local arg confirm tx_status gas_fee gas_wanted
+
+    for arg in "$@"; do
+        call_args+=( -args "$arg" )
+    done
+
+    if ! quote_valoper_call "$key_name" "$func_name" "$@"; then
+        return 1
+    fi
+    gas_fee=$VALOPER_QUOTED_GAS_FEE
+    gas_wanted=$VALOPER_QUOTED_GAS_WANTED
 
     echo -e "\n${YELLOW}Transaction preview:${RESET}"
     printf 'gnokey maketx call \\\n'
@@ -460,8 +514,8 @@ function broadcast_valoper_call() {
     for arg in "$@"; do
         printf '  --args %q \\\n' "$arg"
     done
-    printf '  --gas-fee %s --gas-wanted %s \\\n' "$VALOPER_GAS_FEE" "$VALOPER_GAS_WANTED"
-    printf '  --chainid %s --remote %s --broadcast %q\n' "$GNOLAND_CHAIN_ID" "$GNOLAND_PUBLIC_REMOTE" "$key_name"
+    printf '  --gas-fee %s --gas-wanted %s \\\n' "$gas_fee" "$gas_wanted"
+    printf '  --chainid %s --remote %s --simulate test --broadcast %q\n' "$GNOLAND_CHAIN_ID" "$GNOLAND_PUBLIC_REMOTE" "$key_name"
 
     if [ "$confirm_word" = "yes" ]; then
         read -r -p $'\n\e[33mBroadcast this transaction? (yes/no): \e[0m' confirm
@@ -475,14 +529,15 @@ function broadcast_valoper_call() {
         -pkgpath "gno.land/$GNOLAND_VALOPER_REALM" \
         -func "$func_name" \
         "${call_args[@]}" \
-        -gas-fee "$VALOPER_GAS_FEE" \
-        -gas-wanted "$VALOPER_GAS_WANTED" \
+        -gas-fee "$gas_fee" \
+        -gas-wanted "$gas_wanted" \
         -chainid "$GNOLAND_CHAIN_ID" \
+        -simulate test \
         -broadcast \
         "$key_name"
     tx_status=$?
     if [ "$tx_status" -ne 0 ]; then
-        echo -e "${RED}Transaction failed. Review the gnokey output above.${RESET}"
+        echo -e "${RED}Transaction failed. Review the gnokey output above and re-simulate before retrying.${RESET}"
         return "$tx_status"
     fi
     echo -e "${GREEN}Transaction broadcast succeeded.${RESET}"
@@ -932,7 +987,7 @@ function show_account_dashboard() {
 }
 
 function register_valoper_candidate() {
-    local register_fee derived_operator_addr tx_status profile balance_output
+    local register_fee derived_operator_addr tx_status profile balance_output gas_fee gas_wanted
 
 
     echo -e "${CYAN}Register Gno.land Mainnet Valoper Candidate${RESET}"
@@ -1039,6 +1094,16 @@ function register_valoper_candidate() {
     echo "Register fee:         ${register_fee} ugnot"
     echo "Operator balance:     $(format_ugnot_balance "$balance_output")"
 
+    if ! quote_valoper_call "$KEY_NAME" Register \
+        "$MONIKER" "$DESCRIPTION" "$INFRA_TYPE" "$OPERATOR_ADDR" "$CONSENSUS_PUBKEY"; then
+        echo -e "${YELLOW}Press Enter to go back to main menu${RESET}"
+        read -r
+        menu
+        return
+    fi
+    gas_fee=$VALOPER_QUOTED_GAS_FEE
+    gas_wanted=$VALOPER_QUOTED_GAS_WANTED
+
     echo -e "\n${YELLOW}Transaction preview:${RESET}"
     cat <<EOF
 gnokey maketx call \\
@@ -1049,10 +1114,10 @@ gnokey maketx call \\
   --args "$INFRA_TYPE" \\
   --args "$OPERATOR_ADDR" \\
   --args "$CONSENSUS_PUBKEY" \\
-  --gas-fee $VALOPER_GAS_FEE --gas-wanted $VALOPER_GAS_WANTED \\
+  --gas-fee $gas_fee --gas-wanted $gas_wanted \\
   --chainid $GNOLAND_CHAIN_ID \\
   --remote $GNOLAND_PUBLIC_REMOTE \\
-  --broadcast \\
+  --simulate test --broadcast \\
   $KEY_NAME
 EOF
     read -r -p $'\n\e[33mBroadcast registration transaction? (yes/no): \e[0m' confirm
@@ -1070,9 +1135,10 @@ EOF
         -args "$INFRA_TYPE" \
         -args "$OPERATOR_ADDR" \
         -args "$CONSENSUS_PUBKEY" \
-        -gas-fee "$VALOPER_GAS_FEE" \
-        -gas-wanted "$VALOPER_GAS_WANTED" \
+        -gas-fee "$gas_fee" \
+        -gas-wanted "$gas_wanted" \
         -chainid "$GNOLAND_CHAIN_ID" \
+        -simulate test \
         -broadcast \
         "$KEY_NAME"
     tx_status=$?

@@ -30,6 +30,8 @@ for text in \
     grep -Fq "$text" "$MAIN" || fail "missing operator-console contract: $text"
 done
 
+grep -Fq -- '-simulate only' "$MAIN" || fail "simulation-only gas preflight missing"
+
 if grep -Fq 'Registration blocked: local node must be synced on' "$MAIN"; then
     fail "registration sync hard-block must not return"
 fi
@@ -48,6 +50,7 @@ extract_function() {
 }
 
 for fn in \
+    parse_valoper_simulation_quote \
     valoper_profile_output \
     active_valset_output \
     profile_signing_pubkey \
@@ -57,6 +60,19 @@ for fn in \
     [ -n "$definition" ] || fail "unable to extract helper for mocked status test: $fn"
     eval "$definition"
 done
+
+simulation_output='INFO: estimated gas usage: 268994 (suggested, with 5% margin: 282444), gas fee: 297ugnot, current gas price: 1ugnot/1000gas'
+parse_valoper_simulation_quote "$simulation_output" || fail "valid simulation quote was not parsed"
+[ "$VALOPER_QUOTED_GAS_WANTED" = "282444" ] || fail "simulation gas-wanted quote parsed incorrectly"
+[ "$VALOPER_QUOTED_GAS_FEE" = "297ugnot" ] || fail "simulation gas-fee quote parsed incorrectly"
+if parse_valoper_simulation_quote 'INFO: simulation completed without a gas quote'; then
+    fail "malformed simulation output must fail closed"
+fi
+
+grep -Fq 'quote_valoper_call "$key_name" "$func_name" "$@"' "$MAIN" ||
+    fail "managed valoper calls do not quote gas before broadcast"
+grep -Fq 'quote_valoper_call "$KEY_NAME" Register' "$MAIN" ||
+    fail "candidate registration does not quote gas before broadcast"
 
 export GNOLAND_VALOPER_REALM="r/gnops/valopers"
 export GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
