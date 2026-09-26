@@ -5,6 +5,9 @@ set -u -o pipefail
 readonly EXPECTED_CHAIN_ID="gnoland-1"
 readonly EXPECTED_SOURCE_BRANCH="chain/mainnet"
 readonly EXPECTED_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
+readonly EXPECTED_VERSIONED_RELEASE_TAG="v1.5.0"
+readonly EXPECTED_VERSIONED_RELEASE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
+readonly UPGRADE_LEDGER_URL_DEFAULT="https://raw.githubusercontent.com/gnolang/gno/master/misc/deployments/mainnet.gno.land/upgrades.json"
 readonly EXPECTED_RELEASE_TAG="chain/mainnet"
 readonly EXPECTED_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
 readonly EXPECTED_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
@@ -54,6 +57,7 @@ GNOLAND_REMOTE=${GNOLAND_REMOTE:-$(profile_value GNOLAND_REMOTE "http://127.0.0.
 GNO_BIN=${GNO_BIN:-$HOME/go/bin/gno}
 GNOLAND_BIN=${GNOLAND_BIN:-$HOME/go/bin/gnoland}
 GNOKEY_BIN=${GNOKEY_BIN:-$HOME/go/bin/gnokey}
+UPGRADE_LEDGER_URL=${GNOLAND_UPGRADE_LEDGER_URL:-$UPGRADE_LEDGER_URL_DEFAULT}
 CONFIG_FILE="$GNOLAND_MAINNET_HOME/config/config.toml"
 
 PASS_COUNT=0
@@ -88,6 +92,24 @@ check_binary() {
 check_binary gno_binary "$GNO_BIN" "$EXPECTED_GNO_SHA256"
 check_binary gnoland_binary "$GNOLAND_BIN" "$EXPECTED_GNOLAND_SHA256"
 check_binary gnokey_binary "$GNOKEY_BIN" "$EXPECTED_GNOKEY_SHA256"
+
+upgrade_ledger=$(curl -m 5 -fsS "$UPGRADE_LEDGER_URL" 2>/dev/null || true)
+upgrade_ledger_chain=$(printf '%s' "$upgrade_ledger" | jq -r '.chain_id // empty' 2>/dev/null || true)
+upgrade_ledger_version=$(printf '%s' "$upgrade_ledger" | jq -r '.upgrades[-1].version // empty' 2>/dev/null || true)
+upgrade_ledger_commit=$(printf '%s' "$upgrade_ledger" | jq -r '.upgrades[-1].commit // empty' 2>/dev/null || true)
+upgrade_ledger_halt=$(printf '%s' "$upgrade_ledger" | jq -r '.upgrades[-1].halt_height // "genesis"' 2>/dev/null || true)
+
+if [ "$upgrade_ledger_chain" = "$EXPECTED_CHAIN_ID" ] && [ -n "$upgrade_ledger_version" ] && [ -n "$upgrade_ledger_commit" ]; then
+    if [ "$upgrade_ledger_version" = "$EXPECTED_VERSIONED_RELEASE_TAG" ] && [ "$upgrade_ledger_commit" = "$EXPECTED_VERSIONED_RELEASE_COMMIT" ]; then
+        record PASS upgrade_ledger "official upgrade ledger latest entry matches reviewed runtime $EXPECTED_VERSIONED_RELEASE_TAG@$EXPECTED_VERSIONED_RELEASE_COMMIT (halt ${upgrade_ledger_halt:-unknown})"
+    else
+        record WARN upgrade_ledger "official upgrade ledger latest entry is $upgrade_ledger_version@$upgrade_ledger_commit (halt ${upgrade_ledger_halt:-unknown}); reviewed runtime is $EXPECTED_VERSIONED_RELEASE_TAG@$EXPECTED_VERSIONED_RELEASE_COMMIT; review upstream evidence before changing runtime"
+    fi
+elif [ -n "$upgrade_ledger" ]; then
+    record WARN upgrade_ledger "official upgrade ledger response could not be validated for $EXPECTED_CHAIN_ID"
+else
+    record WARN upgrade_ledger "official upgrade ledger is unavailable at $UPGRADE_LEDGER_URL"
+fi
 
 if [ -d "$GNO_SOURCE_DIR/.git" ]; then
     source_commit=$(git -C "$GNO_SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
