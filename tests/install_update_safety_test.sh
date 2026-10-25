@@ -13,6 +13,19 @@ line_of() {
     grep -nF -- "$needle" "$file" | head -n 1 | cut -d: -f1
 }
 
+# The reviewed updater still targets the v1.5.0-equivalent runtime, while
+# mainnet's v1.5.1 rolling patch has already shipped.
+guard_line=$(line_of 'resources/gnoland_update.sh)' "$MAIN")
+local_exec_line=$(line_of 'bash "$script_dir/../$relative_path"' "$MAIN")
+remote_fetch_line=$(line_of 'curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/' "$MAIN")
+[ -n "$guard_line" ] && [ -n "$local_exec_line" ] && [ -n "$remote_fetch_line" ] ||
+    fail "stale mainnet update guard or helper execution path missing"
+[ "$guard_line" -lt "$local_exec_line" ] && [ "$guard_line" -lt "$remote_fetch_line" ] ||
+    fail "stale mainnet update guard must precede both local and remote helpers"
+grep -Fq 'Grand Valley mainnet update blocked: pinned runtime predates the v1.5.1 rolling patch.' "$MAIN" ||
+    fail "stale mainnet update must provide an operator-facing reason"
+grep -Fq 'Official mainnet upgrade ledger:' "$MAIN" || fail "stale mainnet update must link the official upgrade ledger"
+
 install_stage_line=$(line_of 'All source, binary, and genesis artifacts are staged and verified. Live node has not been modified yet.' "$INSTALLER")
 install_cutover_line=$(line_of 'CURRENT_STAGE="atomic install cutover"' "$INSTALLER")
 if [ -z "$install_stage_line" ] || [ -z "$install_cutover_line" ]; then
