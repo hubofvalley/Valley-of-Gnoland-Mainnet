@@ -17,7 +17,7 @@ line_of() {
 # mainnet's v1.5.1 rolling patch has already shipped.
 guard_line=$(line_of 'resources/gnoland_update.sh)' "$MAIN")
 local_exec_line=$(line_of 'bash "$script_dir/../$relative_path"' "$MAIN")
-remote_fetch_line=$(line_of 'curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/' "$MAIN")
+remote_fetch_line=$(line_of '/${relative_path}" -o "$script_file"' "$MAIN")
 [ -n "$guard_line" ] && [ -n "$local_exec_line" ] && [ -n "$remote_fetch_line" ] ||
     fail "stale mainnet update guard or helper execution path missing"
 [ "$guard_line" -lt "$local_exec_line" ] && [ "$guard_line" -lt "$remote_fetch_line" ] ||
