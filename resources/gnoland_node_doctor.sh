@@ -76,8 +76,8 @@ record() {
 check_persistent_peer_duplicates() {
     local config=$1 configured_peers duplicate_id
     configured_peers=$(awk '
-        /^[[:space:]]*\\[p2p\\][[:space:]]*(#.*)?$/ { in_p2p = 1; next }
-        /^[[:space:]]*\\[/ { in_p2p = 0 }
+        /^[[:space:]]*\[p2p\][[:space:]]*(#.*)?$/ { in_p2p = 1; next }
+        /^[[:space:]]*\[/ { in_p2p = 0 }
         in_p2p && /^[[:space:]]*persistent_peers[[:space:]]*=[[:space:]]*"/ {
             line = $0
             sub(/^[^=]*=[[:space:]]*"/, "", line)
@@ -86,7 +86,7 @@ check_persistent_peer_duplicates() {
             exit
         }
     ' "$config")
-    duplicate_id=$(printf '%s\\n' "$configured_peers" | tr ',' '\\n' | awk -F@ '
+    duplicate_id=$(printf '%s\n' "$configured_peers" | tr ',' '\n' | awk -F@ '
         NF >= 2 && $1 ~ /^[[:alnum:]]+$/ { if (seen[$1]++) { print $1; exit } }
     ')
     if [ -n "$duplicate_id" ]; then
