@@ -294,6 +294,17 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 # immutable helper commit.
 run_repository_script() {
     local relative_path=$1 script_dir script_file exit_code
+
+    # The reviewed updater still installs the v1.5.0-equivalent source
+    # instead of the active v1.5.1 rolling patch with P2P reliability fixes.
+    # Refuse it before executing either the local or pinned remote helper.
+    case "$relative_path" in
+        resources/gnoland_update.sh)
+            echo -e "${RED}Grand Valley mainnet update blocked: pinned runtime predates the v1.5.1 rolling patch.${RESET}" >&2
+            echo "Official mainnet upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md" >&2
+            return 1
+            ;;
+    esac
     if ! script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd); then
         script_dir=""
     fi

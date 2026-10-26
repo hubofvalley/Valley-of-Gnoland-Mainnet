@@ -41,6 +41,9 @@ jobs:
       - name: Run mainnet contract test
         run: bash tests/mainnet_contract_test.sh
 
+      - name: Run install/update safety regression test
+        run: bash tests/install_update_safety_test.sh
+
       - name: Run multi-instance guard regression test
         run: bash tests/multi_instance_test.sh
 
