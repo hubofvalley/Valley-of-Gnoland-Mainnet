@@ -85,7 +85,7 @@ The menu numbering and startup flow remain stable:
 - RPC and ABCI listeners default to loopback; only the P2P listener is configured for public binding by default.
 - Never paste mnemonics or node secrets into chat or logs.
 - The key-management menu does not prove validator status. Option `2c` is a separate transaction flow and always shows the exact registration call before asking for broadcast confirmation.
-- Option `2c` uses the official mainnet parameters: `gno.land/r/gnops/valopers`, function `Register`, gas fee `1000000ugnot`, gas wanted `50000000`, chain ID `gnoland-1`, and `https://rpc.gno.land` as the remote.
+- Option `2c` uses the official mainnet target `gno.land/r/gnops/valopers`, function `Register`, chain ID `gnoland-1`, and `https://rpc.gno.land` as the remote. Before confirmation it runs `gnokey maketx call -simulate only`, requires a parseable recommended gas-wanted/gas-fee quote, and uses that quote for the broadcast.
 - Matching the Testnet UX, option `2c` asks for the operator `g1...` address after the infrastructure type. Before preview/broadcast, Mainnet verifies that the entered address is controlled by the selected local `gnokey` entry.
 - On Mainnet, option `2c` does not hard-block candidate registration on local RPC availability or `catching_up` state because the transaction is signed with `gnokey` and broadcast to `https://rpc.gno.land`. It still verifies `gno.land/r/sys/params.GetValoperRegisterFee()` and fails closed if the fee is nonzero or unreadable.
 - Mainnet has no public faucet. Registration creates only a candidate profile; GovDAO approval through `r/sys/validators/v0` is still required for active-validator admission.

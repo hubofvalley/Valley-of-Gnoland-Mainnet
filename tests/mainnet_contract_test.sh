@@ -129,8 +129,10 @@ fi
 [ "$(jq -r '.candidate_registration.status' "$VERSIONS")" = 'enabled' ] || fail "candidate registration is not enabled"
 [ "$(jq -r '.candidate_registration.candidate_realm' "$VERSIONS")" = 'r/gnops/valopers' ] || fail "candidate realm is wrong"
 [ "$(jq -r '.candidate_registration.function' "$VERSIONS")" = 'Register' ] || fail "candidate registration function is wrong"
-[ "$(jq -r '.candidate_registration.gas_fee' "$VERSIONS")" = '1000000ugnot' ] || fail "candidate registration gas fee is wrong"
-[ "$(jq -r '.candidate_registration.gas_wanted' "$VERSIONS")" = '50000000' ] || fail "candidate registration gas wanted is wrong"
+[ "$(jq -r '.candidate_registration.fee_strategy' "$VERSIONS")" = 'simulate-only' ] || fail "candidate registration fee strategy is wrong"
+[ "$(jq -r '.candidate_registration.simulation_seed_gas_fee' "$VERSIONS")" = '1000000ugnot' ] || fail "candidate registration simulation fee seed is wrong"
+[ "$(jq -r '.candidate_registration.simulation_seed_gas_wanted' "$VERSIONS")" = '50000000' ] || fail "candidate registration simulation gas seed is wrong"
+[ "$(jq -r '.candidate_registration.simulation_fee_margin_percent' "$VERSIONS")" = '5' ] || fail "candidate registration simulation fee margin is wrong"
 [ "$(jq -r '.candidate_registration.active_validator_realm' "$VERSIONS")" = 'r/sys/validators/v0' ] || fail "candidate active validator realm is wrong"
 [ "$(jq -r '.candidate_registration.requires_govdao_approval' "$VERSIONS")" = 'true' ] || fail "candidate registration must require GovDAO approval"
 [ "$(jq -r '.candidate_registration.runtime_register_fee_guard' "$VERSIONS")" = 'GetValoperRegisterFee()==0' ] || fail "candidate registration runtime fee guard is missing"
@@ -142,6 +144,8 @@ fi
 [ "$(jq -r '.install.persistent_backup' "$VALLEY")" = 'optional_prompt' ] || fail "VALLEY backup policy is wrong"
 [ "$(jq -r '.install.preserve_existing_node_secrets' "$VALLEY")" = 'true' ] || fail "VALLEY identity-preservation policy is missing"
 [ "$(jq -r '.endpoints.faucet' "$VALLEY")" = 'null' ] || fail "VALLEY must state that no faucet exists"
+[ "$(jq -r '.candidate_registration.fee_strategy' "$VALLEY")" = 'simulate-only' ] || fail "VALLEY candidate fee strategy is wrong"
+[ "$(jq -r '.candidate_registration.simulation_fee_margin_percent' "$VALLEY")" = '5' ] || fail "VALLEY candidate fee margin is wrong"
 
 active_files=("$ROOT/README.md" "$ROOT/VERSIONS.json" "$ROOT/VALLEY.json")
 while IFS= read -r file; do active_files+=("$file"); done < <(find "$ROOT/docs" "$ROOT/resources" -type f -print)
@@ -161,16 +165,19 @@ grep -Fq "Target source commit: \${GNOLAND_SOURCE_COMMIT}" "$MAIN" ||
 grep -Fq "Target asset version: \${GNOLAND_ASSET_VERSION}" "$MAIN" ||
     fail "update confirmation does not surface the asset version"
 grep -Fq 'readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"' "$MAIN" || fail "mainnet valoper realm pin is missing"
-grep -Fq 'readonly VALOPER_GAS_FEE="1000000ugnot"' "$MAIN" || fail "mainnet valoper gas fee pin is missing"
-grep -Fq 'readonly VALOPER_GAS_WANTED=50000000' "$MAIN" || fail "mainnet valoper gas wanted pin is missing"
+grep -Fq 'readonly VALOPER_SIMULATION_GAS_FEE="1000000ugnot"' "$MAIN" || fail "mainnet valoper simulation fee seed is missing"
+grep -Fq 'readonly VALOPER_SIMULATION_GAS_WANTED=50000000' "$MAIN" || fail "mainnet valoper simulation gas seed is missing"
 grep -Fq '2c. Mainnet Validator Registration' "$MAIN" || fail "2c mainnet registration menu entry is missing"
 if grep -Fq '2c. Mainnet Validator Registration (disabled)' "$MAIN"; then
     fail "2c mainnet registration menu is still marked disabled"
 fi
 grep -Fq -- '-pkgpath "gno.land/$GNOLAND_VALOPER_REALM"' "$MAIN" || fail "2c does not call the verified valoper realm pin"
 grep -Fq -- '-func Register' "$MAIN" || fail "2c does not call Register"
-grep -Fq -- '-gas-fee "$VALOPER_GAS_FEE"' "$MAIN" || fail "2c does not use the verified gas fee"
-grep -Fq -- '-gas-wanted "$VALOPER_GAS_WANTED"' "$MAIN" || fail "2c does not use the verified gas wanted"
+grep -Fq 'quote_valoper_call "$KEY_NAME" Register' "$MAIN" || fail "2c does not simulate registration before broadcast"
+grep -Fq -- '-simulate only' "$MAIN" || fail "valoper transaction dry-run simulation is missing"
+grep -Fq -- '-gas-fee "$gas_fee"' "$MAIN" || fail "valoper broadcast does not use the simulation-derived gas fee"
+grep -Fq -- '-gas-wanted "$gas_wanted"' "$MAIN" || fail "valoper broadcast does not use the simulation-derived gas wanted"
+grep -Fq -- '-simulate test' "$MAIN" || fail "valoper broadcast does not re-simulate before submission"
 grep -Fq 'GetValoperRegisterFee()' "$MAIN" || fail "2c does not verify the current on-chain registration fee"
 grep -Fq 'Registration blocked: the current on-chain valoper registration fee is' "$MAIN" || fail "2c does not fail closed on a nonzero registration fee"
 grep -Fq 'read -r -p "Enter operator g1... address: " OPERATOR_ADDR' "$MAIN" || fail "2c does not preserve the Testnet operator-address prompt"
