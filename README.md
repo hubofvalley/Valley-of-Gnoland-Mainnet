@@ -6,7 +6,7 @@ Interactive terminal tooling by **Grand Valley** for installing, updating, inspe
 
 [Gno.land](https://gno.land) is the Gno blockchain network maintained by the Gno community. This Valley manages the single Cosmos/CometBFT-style `gnoland` service, its pinned mainnet source checkout, the official launch genesis, and the `gno`, `gnoland`, and `gnokey` command-line tools.
 
-The tools are installed from official, immutable Linux amd64 GHCR OCI image manifests built from the `chain/mainnet` branch. Valley extracts only `/usr/bin/gno`, `/usr/bin/gnoland`, and `/usr/bin/gnokey`, verifies the manifest, binary layer, and executable hashes, and does not require Docker. The launch genesis remains pinned to the official `chain/mainnet` release because the moving branch tip is not a genesis release.
+The tools are installed from official, immutable Linux amd64 GHCR OCI image manifests for the current reviewed versioned release, `v1.5.0`. That release is built from the same `e75fef82c02876a4df92ad6e325c5479b9532168` source commit that Valley already reviews for mainnet. Valley extracts only `/usr/bin/gno`, `/usr/bin/gnoland`, and `/usr/bin/gnokey`, verifies the manifest, binary layer, executable hash, and reported release identity, and does not require Docker. The launch genesis remains pinned separately to the official `chain/mainnet` genesis release because genesis identity and the moving runtime release are different contracts.
 
 This repository does not automate validator admission. Option `2c` can prepare, preview, sign through the local `gnokey` keyring, and broadcast the official mainnet valoper-candidate registration transaction after explicit operator confirmation. Registration only creates a candidate profile; GovDAO must still approve a proposal before the node joins the active validator set. Mainnet has no public faucet. The snapshot menu is deliberately fail-closed because no provider has been independently verified for `gnoland-1`.
 
@@ -20,7 +20,8 @@ This repository does not automate validator admission. Option `2c` can prepare, 
 | Launch release tag | `chain/mainnet` |
 | Launch release/tag commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
 | Versioned launch release | `v1.2.0` at `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
-| OCI-reported tool version | `heads/chain/mainnet.3444+e75fef82c` |
+| Current versioned runtime release | `v1.5.0` at `e75fef82c02876a4df92ad6e325c5479b9532168` |
+| OCI-reported tool version | `v1.5.0` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
 | Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
@@ -35,9 +36,9 @@ The immutable platform manifests, binary layers, extracted paths, and executable
 
 | Tool | Immutable image | Binary layer | Executable SHA-256 |
 |---|---|---|---|
-| `gno` | `ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc` | `sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff` | `423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d` |
-| `gnoland` | `ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0` | `sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63` | `5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc` |
-| `gnokey` | `ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71` | `sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352` | `2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd` |
+| `gno` | `ghcr.io/gnolang/gno/gno@sha256:e9ad26286c98a1ab7fdddc59f478a13eda1abba80123fd18a8d46e0f3944036c` | `sha256:b00b81b81eb1b2e1336abf3571be1c5de3f0b304e68025134f21ab203c145656` | `a72b09348a7448fb83d1f608ecfefd044e8d12df4c0c70300c35453482edd7e4` |
+| `gnoland` | `ghcr.io/gnolang/gno/gnoland@sha256:70f465a64dbe16e6e93e225967b5c1643d95f3361ef8edfd261445b7a870494d` | `sha256:e9a097249a947328c93223f9be06961b128ed8fdbfb537e767d73b9bebcd0d51` | `f88af6fd5485fe84ed6787fc06a19b07b4bf11aebb49f296c62990ffdd9a9765` |
+| `gnokey` | `ghcr.io/gnolang/gno/gnokey@sha256:23f51c151b02776cee8ee8fbb799ff7bade7aea049d05563b126d196c1cdb0c0` | `sha256:79304ee04a936f559911c47d79dff8ccb1ce455387e7dc561ead36dcf8512ca8` | `f90bb28057eaae6301e58f7ce7dc2bed988d70be5f5e9d54aec2580d71b586b4` |
 
 ## Getting started
 
@@ -71,7 +72,7 @@ Installation and update:
 
 1. fetch the exact reviewed source commit `e75fef82c02876a4df92ad6e325c5479b9532168`; later branch movement is reported and never substitutes for the reviewed pin;
 2. verify the official `chain/mainnet` release metadata and keep its launch genesis pinned to release commit `9c8eb132e483d6fd324d92c193e629ad65a98a37`;
-3. resolve each immutable GHCR platform manifest, verify its manifest digest and expected binary layer digest, extract the fixed `/usr/bin/{gno,gnoland,gnokey}` member without Docker, and verify the executable SHA-256 plus reported tool version; and
+3. resolve each immutable `v1.5.0` GHCR Linux amd64 platform manifest, verify its manifest digest and expected binary layer digest, extract the fixed `/usr/bin/{gno,gnoland,gnokey}` member without Docker, and verify the executable SHA-256 plus the `v1.5.0` reported release identity; and
 4. stage source, tools, and compressed genesis before the transactional cutover.
 
 `1a` uses a stage-first safe cutover. Existing validator/node secrets are preserved during a Valley-managed reinstall; a persistent backup is offered but optional. The previous runtime is retained temporarily until the replacement passes its `gnoland-1` RPC startup gate.

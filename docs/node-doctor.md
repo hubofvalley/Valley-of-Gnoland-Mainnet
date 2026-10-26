@@ -29,9 +29,9 @@ The doctor checks:
 The expected tool hashes are:
 
 ```text
-gno      423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d
-gnoland  5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc
-gnokey   2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd
+gno      a72b09348a7448fb83d1f608ecfefd044e8d12df4c0c70300c35453482edd7e4
+gnoland  f88af6fd5485fe84ed6787fc06a19b07b4bf11aebb49f296c62990ffdd9a9765
+gnokey   f90bb28057eaae6301e58f7ce7dc2bed988d70be5f5e9d54aec2580d71b586b4
 ```
 
 The height comparison is deliberately observational. It reports the raw block difference against `https://rpc.gno.land` when both endpoints identify as `gnoland-1`, but it does not invent a healthy-gap threshold or treat the comparison RPC as a canonical network-head oracle.
