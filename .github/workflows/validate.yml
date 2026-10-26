@@ -50,6 +50,9 @@ jobs:
       - name: Run mainnet Node Doctor regression test
         run: bash tests/node_doctor_test.sh
 
+      - name: Run persistent-peer diagnostic fixtures
+        run: bash tests/persistent_peer_guard_test.sh
+
       - name: Run release identity regression test
         run: bash tests/release_identity_test.sh
 
