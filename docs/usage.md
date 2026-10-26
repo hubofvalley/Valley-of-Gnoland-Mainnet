@@ -27,7 +27,7 @@ Option `1a` asks for the node moniker, a two-digit local port prefix, an optiona
 1. checks the selected service belongs to the current OS-user instance;
 2. checks the official launch-release metadata and preserves the launch genesis pin;
 3. stages source commit `e75fef82c02876a4df92ad6e325c5479b9532168`, the three immutable GHCR Linux amd64 image manifests, their expected binary layers, and compressed genesis without stopping the live node;
-4. verifies each manifest digest, layer digest, extracted `/usr/bin/{gno,gnoland,gnokey}` SHA-256, reported tool version, compressed-genesis hash, and final genesis hash before cutover;
+4. verifies each manifest digest, layer digest, extracted `/usr/bin/{gno,gnoland,gnokey}` SHA-256, reported tool version, and that the staged `gno` binary can compile and run a minimal program against the exact staged `GNOROOT`, then verifies the compressed-genesis and final genesis hashes before cutover;
 5. asks whether to create a persistent secrets/keyring backup; choosing no does not block installation;
 6. for an existing Valley mainnet node, temporarily retains the previous runtime and preserves the existing validator/node `secrets/` directory exactly while rebuilding node data/config;
 7. configures both official persistent peers and the selected local ports; and

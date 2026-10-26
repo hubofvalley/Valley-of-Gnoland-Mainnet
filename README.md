@@ -71,8 +71,9 @@ Installation and update:
 
 1. fetch the exact reviewed source commit `e75fef82c02876a4df92ad6e325c5479b9532168`; later branch movement is reported and never substitutes for the reviewed pin;
 2. verify the official `chain/mainnet` release metadata and keep its launch genesis pinned to release commit `9c8eb132e483d6fd324d92c193e629ad65a98a37`;
-3. resolve each immutable GHCR platform manifest, verify its manifest digest and expected binary layer digest, extract the fixed `/usr/bin/{gno,gnoland,gnokey}` member without Docker, and verify the executable SHA-256 plus reported tool version; and
-4. stage source, tools, and compressed genesis before the transactional cutover.
+3. resolve each immutable GHCR platform manifest, verify its manifest digest and expected binary layer digest, extract the fixed `/usr/bin/{gno,gnoland,gnokey}` member without Docker, and verify the executable SHA-256 plus reported tool version;
+4. compile and run a minimal Gno program with the staged `gno` binary against the exact staged `GNOROOT`, so a version-correct binary with an unusable runtime/source pairing fails before cutover; and
+5. stage source, tools, and compressed genesis before the transactional cutover.
 
 `1a` uses a stage-first safe cutover. Existing validator/node secrets are preserved during a Valley-managed reinstall; a persistent backup is offered but optional. The previous runtime is retained temporarily until the replacement passes its `gnoland-1` RPC startup gate.
 
