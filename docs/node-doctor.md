@@ -19,7 +19,7 @@ The doctor checks:
 - the immutable-OCI-extracted Linux amd64 `gno`, `gnoland`, and `gnokey` executable hashes;
 - the pinned `chain/mainnet` source commit `e75fef82c02876a4df92ad6e325c5479b9532168`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` in `misc/deployments/mainnet.gno.land/`;
-- the two official persistent peers in `config.toml`;
+- the two official persistent peers in `config.toml`, including repeated peer IDs in the `[p2p]` section (only the final address for a repeated ID is dialed since `v1.5.1`);
 - the service unit's `gnoland-1` chain ID and mainnet startup flags;
 - local RPC network identity, node-reported `catching_up` state, current height, and live peer count;
 - the official comparison RPC network identity and its observed height relative to the local node;
