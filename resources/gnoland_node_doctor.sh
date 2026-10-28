@@ -5,12 +5,18 @@ set -u -o pipefail
 readonly EXPECTED_CHAIN_ID="gnoland-1"
 readonly EXPECTED_SOURCE_BRANCH="chain/mainnet"
 readonly EXPECTED_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
+# v1.5.1 is the active mainnet rolling release; keep the older reviewed pin as legacy.
+readonly V151_SOURCE_COMMIT="07e44776c26187830b7dcbd2454991b5a1960378"
 readonly EXPECTED_RELEASE_TAG="chain/mainnet"
 readonly EXPECTED_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
 readonly EXPECTED_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
 readonly EXPECTED_GNO_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
 readonly EXPECTED_GNOLAND_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
 readonly EXPECTED_GNOKEY_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
+# SHA-256 digests from the official v1.5.1 GitHub release asset metadata (Linux amd64).
+readonly V151_GNO_SHA256="fd70e8173b98dd7ac73b45d8d1cdcb446dbf11ab1f7e3f34e29336066f8e1485"
+readonly V151_GNOLAND_SHA256="ca2319a1a7ebf07fed9268403b0a6ac5e474eee8d0da4babe9b4fb2f8eff2241"
+readonly V151_GNOKEY_SHA256="73a4cc744fc02a0e8aa05ab77be730d7bb96192f5a6ae6a63d5f01e1a6713477"
 readonly EXPECTED_PERSISTENT_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly EXPECTED_DEPLOYMENT_PATH="misc/deployments/mainnet.gno.land"
 readonly ACTIVE_VALIDATOR_REALM="r/sys/validators/v0"
@@ -72,29 +78,33 @@ record() {
 }
 
 check_binary() {
-    local label=$1 path=$2 expected=$3 observed
+    local label=$1 path=$2 legacy_hash=$3 v151_hash=$4 observed
     if [ ! -x "$path" ]; then
         record FAIL "$label" "$path is missing or not executable"
         return
     fi
     observed=$(sha256sum "$path" 2>/dev/null | awk '{print $1}')
-    if [ "$observed" = "$expected" ]; then
-        record PASS "$label" "$path matches the official Linux amd64 mainnet asset hash"
+    if [ "$observed" = "$v151_hash" ]; then
+        record PASS "$label" "$path matches the official v1.5.1 Linux amd64 release asset"
+    elif [ "$observed" = "$legacy_hash" ]; then
+        record WARN "$label" "$path matches the older reviewed Grand Valley artifact; v1.5.1 is the recommended rolling release"
     else
-        record FAIL "$label" "$path hash is ${observed:-unreadable}; expected $expected"
+        record FAIL "$label" "$path hash is ${observed:-unreadable}; expected v1.5.1 ($v151_hash) or legacy reviewed ($legacy_hash)"
     fi
 }
 
-check_binary gno_binary "$GNO_BIN" "$EXPECTED_GNO_SHA256"
-check_binary gnoland_binary "$GNOLAND_BIN" "$EXPECTED_GNOLAND_SHA256"
-check_binary gnokey_binary "$GNOKEY_BIN" "$EXPECTED_GNOKEY_SHA256"
+check_binary gno_binary "$GNO_BIN" "$EXPECTED_GNO_SHA256" "$V151_GNO_SHA256"
+check_binary gnoland_binary "$GNOLAND_BIN" "$EXPECTED_GNOLAND_SHA256" "$V151_GNOLAND_SHA256"
+check_binary gnokey_binary "$GNOKEY_BIN" "$EXPECTED_GNOKEY_SHA256" "$V151_GNOKEY_SHA256"
 
 if [ -d "$GNO_SOURCE_DIR/.git" ]; then
     source_commit=$(git -C "$GNO_SOURCE_DIR" rev-parse HEAD 2>/dev/null || true)
-    if [ "$source_commit" = "$EXPECTED_SOURCE_COMMIT" ]; then
-        record PASS source_commit "source checkout matches $EXPECTED_SOURCE_BRANCH@$EXPECTED_SOURCE_COMMIT"
+    if [ "$source_commit" = "$V151_SOURCE_COMMIT" ]; then
+        record PASS source_commit "source checkout matches official v1.5.1 rolling release ($V151_SOURCE_COMMIT)"
+    elif [ "$source_commit" = "$EXPECTED_SOURCE_COMMIT" ]; then
+        record WARN source_commit "source checkout matches older Grand Valley pin ($EXPECTED_SOURCE_COMMIT); v1.5.1 uses $V151_SOURCE_COMMIT"
     else
-        record FAIL source_commit "source checkout is ${source_commit:-unreadable}; expected $EXPECTED_SOURCE_COMMIT"
+        record FAIL source_commit "source checkout is ${source_commit:-unreadable}; expected v1.5.1 ($V151_SOURCE_COMMIT) or older reviewed pin ($EXPECTED_SOURCE_COMMIT)"
     fi
     if [ -d "$GNOLAND_DEPLOYMENT_DIR" ] && [[ "$GNOLAND_DEPLOYMENT_DIR" == *"/$EXPECTED_DEPLOYMENT_PATH" ]]; then
         record PASS deployment_path "mainnet deployment path is $GNOLAND_DEPLOYMENT_DIR"
