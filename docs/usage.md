@@ -22,6 +22,15 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 ## First install
 
+**Current runtime caveat:** option `1a` still stages the reviewed v1.5.0-era
+source and binaries. The official active rolling release is `v1.5.1`, which
+includes P2P reliability fixes but is not yet the installer pin. The launcher
+therefore requires typing `INSTALL-LEGACY` before executing either the local
+or pinned remote installer helper. A missing or mismatched acknowledgement
+cancels the operation. This does not change the separate installer confirmation
+or update any binaries. Review the [official mainnet upgrade ledger](https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md)
+before choosing to install or reinstall.
+
 Option `1a` asks for the node moniker, a two-digit local port prefix, an optional public P2P host, firewall preference, service name, and operator-key choice. It then:
 
 1. checks the selected service belongs to the current OS-user instance;

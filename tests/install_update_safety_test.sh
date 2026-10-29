@@ -26,6 +26,17 @@ grep -Fq 'Grand Valley mainnet update blocked: pinned runtime predates the v1.5.
     fail "stale mainnet update must provide an operator-facing reason"
 grep -Fq 'Official mainnet upgrade ledger:' "$MAIN" || fail "stale mainnet update must link the official upgrade ledger"
 
+# The still-pinned v1.5.0-era installer remains usable only after informed,
+# explicit acceptance; this must cover both checked-out and remote helpers.
+install_guard_line=$(line_of 'resources/gnoland_node_install.sh)' "$MAIN")
+[ -n "$install_guard_line" ] || fail "legacy mainnet installer acknowledgement guard missing"
+[ "$install_guard_line" -lt "$local_exec_line" ] && [ "$install_guard_line" -lt "$remote_fetch_line" ] ||
+    fail "legacy install acknowledgement must precede local and remote helpers"
+grep -Fq 'Type INSTALL-LEGACY to proceed with the reviewed older runtime:' "$MAIN" ||
+    fail "legacy installer must require a distinct operator acknowledgement"
+grep -Fq 'mainnet install cancelled: legacy runtime not acknowledged.' "$MAIN" ||
+    fail "legacy installer must fail closed when acknowledgement is missing"
+
 install_stage_line=$(line_of 'All source, binary, and genesis artifacts are staged and verified. Live node has not been modified yet.' "$INSTALLER")
 install_cutover_line=$(line_of 'CURRENT_STAGE="atomic install cutover"' "$INSTALLER")
 if [ -z "$install_stage_line" ] || [ -z "$install_cutover_line" ]; then

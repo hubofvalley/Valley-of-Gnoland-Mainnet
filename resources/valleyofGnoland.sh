@@ -293,12 +293,24 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 # remote fallback is intentionally absent because this checkout has no verified
 # immutable helper commit.
 run_repository_script() {
-    local relative_path=$1 script_dir script_file exit_code
+    local relative_path=$1 script_dir script_file exit_code acknowledgement=""
 
     # The reviewed updater still installs the v1.5.0-equivalent source
     # instead of the active v1.5.1 rolling patch with P2P reliability fixes.
     # Refuse it before executing either the local or pinned remote helper.
     case "$relative_path" in
+        resources/gnoland_node_install.sh)
+            # v1.5.0-era binaries are still consensus-compatible, but the
+            # v1.5.1 rolling release fixes P2P reliability. Require a distinct
+            # acknowledgement before the local or pinned remote helper runs.
+            echo -e "${YELLOW}Grand Valley mainnet install warning: this helper is pinned to v1.5.0-era code; the active rolling release is v1.5.1.${RESET}" >&2
+            echo "The pinned installer can replace a newer existing node runtime and does not include the v1.5.1 P2P reliability fixes." >&2
+            echo "Official mainnet upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md" >&2
+            if ! read -r -p "Type INSTALL-LEGACY to proceed with the reviewed older runtime: " acknowledgement || [ "$acknowledgement" != "INSTALL-LEGACY" ]; then
+                echo "Grand Valley mainnet install cancelled: legacy runtime not acknowledged." >&2
+                return 1
+            fi
+            ;;
         resources/gnoland_update.sh)
             echo -e "${RED}Grand Valley mainnet update blocked: pinned runtime predates the v1.5.1 rolling patch.${RESET}" >&2
             echo "Official mainnet upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md" >&2
