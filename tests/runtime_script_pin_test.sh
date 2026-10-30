@@ -11,15 +11,15 @@ runtime_ref=$(sed -n 's/^readonly VALLEY_RUNTIME_REF="\([0-9a-f]\{40\}\)"$/\1/p'
 [ -n "$runtime_ref" ] || fail "VALLEY_RUNTIME_REF must be a full commit SHA"
 grep -Fq 'no verified remote pin' "$MAIN" || fail "missing remote-helper safety boundary"
 grep -Fq "script_dir/../\$relative_path" "$MAIN" || fail "main menu does not prefer checked-out helpers"
-grep -Fq "Valley-of-Gnoland-Mainnet/35196270ea330dde87b3bc4baf18686e16a2cd19/\${relative_path}" "$MAIN" || fail "main menu remote helper is not pinned"
-grep -Fq "Valley-of-Gnoland-Mainnet/35196270ea330dde87b3bc4baf18686e16a2cd19/\${NODE_DOCTOR_RELATIVE_PATH}" "$MAIN" || fail "doctor remote helper is not pinned"
+grep -Fq "Valley-of-Gnoland-Mainnet/${runtime_ref}/\${relative_path}" "$MAIN" || fail "main menu remote helper is not pinned to VALLEY_RUNTIME_REF"
+grep -Fq "Valley-of-Gnoland-Mainnet/${runtime_ref}/\${NODE_DOCTOR_RELATIVE_PATH}" "$MAIN" || fail "doctor remote helper is not pinned to VALLEY_RUNTIME_REF"
 if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$MAIN" "$DOCTOR"; then
     fail "stale endpoint or release wording remains in runtime scripts"
 fi
 
 grep -Fq 'GNOLAND_SOURCE_BRANCH="chain/mainnet"' "$MAIN" || fail "main menu source branch missing"
-grep -Fq 'GNOLAND_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"' "$MAIN" || fail "main menu source commit missing"
-grep -Fq 'GNOLAND_ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"' "$MAIN" || fail "main menu asset version missing"
+grep -Fq 'GNOLAND_SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"' "$MAIN" || fail "main menu source commit missing"
+grep -Fq 'GNOLAND_ASSET_VERSION="v1.7.0"' "$MAIN" || fail "main menu asset version missing"
 grep -Fq 'OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"' "$MAIN" || fail "official peers missing"
 
 for helper in resources/gnoland_node_install.sh resources/gnoland_node_doctor.sh resources/gnoland_update.sh; do

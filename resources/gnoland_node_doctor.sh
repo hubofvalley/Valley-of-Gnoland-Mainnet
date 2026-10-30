@@ -4,13 +4,13 @@ set -u -o pipefail
 
 readonly EXPECTED_CHAIN_ID="gnoland-1"
 readonly EXPECTED_SOURCE_BRANCH="chain/mainnet"
-readonly EXPECTED_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
-readonly EXPECTED_RELEASE_TAG="chain/mainnet"
-readonly EXPECTED_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
+readonly EXPECTED_SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
+readonly EXPECTED_RELEASE_TAG="v1.7.0"
+readonly EXPECTED_RELEASE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
 readonly EXPECTED_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly EXPECTED_GNO_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
-readonly EXPECTED_GNOLAND_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
-readonly EXPECTED_GNOKEY_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
+readonly EXPECTED_GNO_SHA256="7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79"
+readonly EXPECTED_GNOLAND_SHA256="5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51"
+readonly EXPECTED_GNOKEY_SHA256="8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e"
 readonly EXPECTED_PERSISTENT_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly EXPECTED_DEPLOYMENT_PATH="misc/deployments/mainnet.gno.land"
 readonly ACTIVE_VALIDATOR_REALM="r/sys/validators/v0"
@@ -22,7 +22,7 @@ if [ -n "${GNOLAND_NODE_DOCTOR_REF:-}" ] && [[ ! "${GNOLAND_NODE_DOCTOR_REF}" =~
 fi
 
 if [ "${1:-}" = "--version" ]; then
-    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.2.0"
+    echo "Valley of Gnoland Node Doctor (gnoland-1) 1.7.0"
     exit 0
 fi
 

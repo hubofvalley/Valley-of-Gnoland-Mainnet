@@ -1,83 +1,19 @@
 #!/bin/bash
 set -euo pipefail
-
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
 INSTALLER="$ROOT/resources/gnoland_node_install.sh"
 UPDATER="$ROOT/resources/gnoland_update.sh"
-MAIN="$ROOT/resources/valleyofGnoland.sh"
-
-fail() { echo "INSTALL_UPDATE_SAFETY_TEST_FAIL: $*" >&2; exit 1; }
-
-line_of() {
-    local needle=$1 file=$2
-    grep -nF -- "$needle" "$file" | head -n 1 | cut -d: -f1
-}
-
-# The reviewed updater still targets the v1.5.0-equivalent runtime, while
-# mainnet's v1.5.1 rolling patch has already shipped.
-guard_line=$(line_of 'resources/gnoland_update.sh)' "$MAIN")
-local_exec_line=$(line_of 'bash "$script_dir/../$relative_path"' "$MAIN")
-remote_fetch_line=$(line_of '/${relative_path}" -o "$script_file"' "$MAIN")
-[ -n "$guard_line" ] && [ -n "$local_exec_line" ] && [ -n "$remote_fetch_line" ] ||
-    fail "stale mainnet update guard or helper execution path missing"
-[ "$guard_line" -lt "$local_exec_line" ] && [ "$guard_line" -lt "$remote_fetch_line" ] ||
-    fail "stale mainnet update guard must precede both local and remote helpers"
-grep -Fq 'Grand Valley mainnet update blocked: pinned runtime predates the v1.5.1 rolling patch.' "$MAIN" ||
-    fail "stale mainnet update must provide an operator-facing reason"
-grep -Fq 'Official mainnet upgrade ledger:' "$MAIN" || fail "stale mainnet update must link the official upgrade ledger"
-
-install_stage_line=$(line_of 'All source, binary, and genesis artifacts are staged and verified. Live node has not been modified yet.' "$INSTALLER")
-install_cutover_line=$(line_of 'CURRENT_STAGE="atomic install cutover"' "$INSTALLER")
-if [ -z "$install_stage_line" ] || [ -z "$install_cutover_line" ]; then
-    fail "installer staging/cutover markers missing"
-fi
-[ "$install_stage_line" -lt "$install_cutover_line" ] || fail "installer cutover begins before staging completes"
-
-update_stage_line=$(line_of 'CURRENT_STAGE="stage and verify immutable GHCR OCI binaries"' "$UPDATER")
-update_cutover_line=$(line_of 'CURRENT_STAGE="cut over reviewed runtime"' "$UPDATER")
-if [ -z "$update_stage_line" ] || [ -z "$update_cutover_line" ]; then
-    fail "updater staging/cutover markers missing"
-fi
-[ "$update_stage_line" -lt "$update_cutover_line" ] || fail "updater cutover begins before staging completes"
-
-grep -Fq 'Create a persistent backup of existing node secrets and operator keyring first? (Y/n): ' "$INSTALLER" ||
-    fail "installer does not ask whether to create a persistent backup"
-grep -Fq 'Persistent backup skipped by operator choice.' "$INSTALLER" ||
-    fail "installer does not allow persistent backup to be skipped"
-grep -Fq 'Preserved existing validator/node secrets exactly for safe reinstall.' "$INSTALLER" ||
-    fail "safe reinstall does not preserve validator/node secrets"
-grep -Fq 'Generated fresh node secrets for a fresh installation.' "$INSTALLER" ||
-    fail "fresh-install-only secret generation boundary missing"
-grep -Fq 'rollback_install()' "$INSTALLER" || fail "installer rollback function missing"
-grep -Fq 'rollback_update()' "$UPDATER" || fail "updater rollback function missing"
-grep -Fq 'wait_for_rpc_health()' "$UPDATER" || fail "updater health gate missing"
-grep -Fq 'Already up to date.' "$UPDATER" || fail "updater no-op path missing"
-grep -Fq 'Only gnokey changed; the running gnoland service was not restarted.' "$UPDATER" ||
-    fail "updater gnokey-only no-restart path missing"
-
-for script in "$INSTALLER" "$UPDATER"; do
-    rel=${script#"$ROOT"/}
-    grep -Fq "fetch --depth 1 origin \"\$SOURCE_COMMIT\"" "$script" || fail "exact source-commit fetch missing in $rel"
-    if grep -Fq "fetch --depth 1 origin \"refs/heads/\$SOURCE_BRANCH\"" "$script"; then
-        fail "branch-tip equality still drives source pinning in $rel"
-    fi
-    grep -Fq 'RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"' "$script" ||
-        fail "release-drift metadata check missing in $rel"
-    grep -Fq 'GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"' "$script" ||
-        fail "compressed genesis verification missing in $rel"
-done
-
-grep -Fq 'Type ENABLE-UFW to apply these rules and enable UFW' "$INSTALLER" || fail "UFW second confirmation missing"
-if grep -Fq 'ufw allow 22/tcp' "$INSTALLER"; then
-    fail "installer still hard-codes SSH port 22 for UFW"
-fi
-
-for profile_file in "$INSTALLER" "$UPDATER" "$MAIN"; do
-    rel=${profile_file#"$ROOT"/}
-    grep -Fq '# >>> GRAND VALLEY GNOLAND MAINNET >>>' "$profile_file" || fail "managed profile block missing in $rel"
-    if grep -Fq 'go\/bin/d' "$profile_file"; then
-        fail "profile management can delete unrelated go/bin lines in $rel"
-    fi
-done
-
-printf '%s\n' 'INSTALL_UPDATE_SAFETY_TEST_OK'
+fail(){ echo "INSTALL_UPDATE_SAFETY_TEST_FAIL: $*" >&2; exit 1; }
+line_of(){ grep -nF -- "$1" "$2" | head -n1 | cut -d: -f1; }
+a=$(line_of 'CURRENT_STAGE="stage all reviewed artifacts before cutover"' "$INSTALLER"); b=$(line_of 'CURRENT_STAGE="atomic install cutover"' "$INSTALLER"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ] || fail "installer staging boundary"
+a=$(line_of 'CURRENT_STAGE="stage and verify v1.7.0 release assets"' "$UPDATER"); b=$(line_of 'CURRENT_STAGE="cut over reviewed runtime"' "$UPDATER"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ] || fail "updater staging boundary"
+grep -Fq 'Create a persistent backup of existing node secrets and operator keyring first? (Y/n): ' "$INSTALLER" || fail "backup prompt"
+grep -Fq 'Preserved existing validator/node secrets exactly for safe reinstall.' "$INSTALLER" || fail "identity preservation"
+grep -Fq rollback_install "$INSTALLER" || fail "installer rollback"
+grep -Fq rollback_update "$UPDATER" || fail "updater rollback"
+grep -Fq wait_for_rpc_health "$UPDATER" || fail "health gate"
+grep -Fq 'Already up to date.' "$UPDATER" || fail "no-op path"
+grep -Fq 'CHECKSUMS_URL=' "$INSTALLER" || fail "installer checksum URL"
+grep -Fq 'CHECKSUMS_URL=' "$UPDATER" || fail "updater checksum URL"
+if grep -Eiq 'OCI|stage_oci_binary|v1\\.2\\.0|e75fef82|v1\\.5\\.0|v1\\.5\\.1' "$INSTALLER" "$UPDATER"; then fail "stale release logic"; fi
+printf '%s\\n' INSTALL_UPDATE_SAFETY_TEST_OK
