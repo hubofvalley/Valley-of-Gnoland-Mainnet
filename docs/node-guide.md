@@ -7,11 +7,11 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 | Field | Value |
 |---|---|
 | Chain ID | `gnoland-1` |
-| Source branch | `chain/mainnet` |
-| Source branch commit | `e75fef82c02876a4df92ad6e325c5479b9532168` |
-| OCI-reported tool version | `heads/chain/mainnet.3444+e75fef82c` |
-| Launch release/tag commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
-| Versioned launch release | `v1.2.0` at `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
+| Source branch context | `chain/mainnet` |
+| Runtime source tag | `v1.7.0` |
+| Runtime source/tag commit | `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319` |
+| Launch genesis release/tag | `chain/mainnet` |
+| Launch genesis release commit | `9c8eb132e483d6fd324d92c193e629ad65a98a37` |
 | Deployment path | `misc/deployments/mainnet.gno.land/` |
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
 | Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
@@ -22,56 +22,42 @@ This guide records the verified mainnet deployment facts used by Valley of Gnola
 | Active validator realm | `r/sys/validators/v0` |
 | Official persistent peers | `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656` |
 
-## Immutable OCI tools
+## v1.7.0 release assets
 
-Valley installs Linux amd64 executables from official GHCR OCI platform manifests. It does not require Docker. For each image, the installer/updater verifies the manifest digest, downloads the expected compressed binary layer, verifies that layer digest, extracts the exact `/usr/bin/...` member, and verifies the executable hash and reported version.
+Valley downloads the official Linux amd64 assets from the v1.7.0 GitHub release and verifies `CHECKSUMS.txt` before any service cutover.
 
-| Tool | Immutable image manifest | Binary layer | Extracted binary SHA-256 |
-|---|---|---|---|
-| `gno` | `ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc` | `sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff` | `423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d` |
-| `gnoland` | `ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0` | `sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63` | `5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc` |
-| `gnokey` | `ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71` | `sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352` | `2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd` |
+| Tool | Asset | SHA-256 |
+|---|---|---|
+| `gno` | `gno_linux_amd64` | `7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79` |
+| `gnoland` | `gnoland_linux_amd64` | `5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51` |
+| `gnokey` | `gnokey_linux_amd64` | `8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e` |
 
-The extracted paths are `/usr/bin/gno`, `/usr/bin/gnoland`, and `/usr/bin/gnokey`. The source checkout and tools report `heads/chain/mainnet.3444+e75fef82c`.
+`CHECKSUMS.txt` SHA-256: `912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3`.
 
-## Source and launch-release metadata
+## Source and launch genesis
 
-The source checkout is pinned to the verified branch commit:
+The runtime source is pinned to the v1.7.0 tag commit:
 
 ```bash
 git clone https://github.com/gnolang/gno.git "$HOME/gno"
-git -C "$HOME/gno" fetch --depth 1 origin e75fef82c02876a4df92ad6e325c5479b9532168
-git -C "$HOME/gno" checkout --detach --force e75fef82c02876a4df92ad6e325c5479b9532168
+git -C "$HOME/gno" fetch --depth 1 origin e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319
+git -C "$HOME/gno" checkout --detach --force e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319
 ```
 
-The moving branch build and launch genesis are separate facts. Valley keeps the genesis from the official `chain/mainnet` release/tag at `9c8eb132e483d6fd324d92c193e629ad65a98a37`, while the three current tools come from the immutable OCI manifests above. No source build is substituted for the verified OCI binaries.
+The launch genesis is a separate pin from the `chain/mainnet` release. No branch-tip movement substitutes for the reviewed runtime tag or genesis.
 
 ## Genesis
 
-Valley uses the official compressed launch-release genesis for transfer efficiency:
+Valley uses the official compressed launch genesis:
 
 ```text
 https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json.gz
 SHA-256: 32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9
 ```
 
-Store the decompressed file at:
-
-```text
-$HOME/gno/misc/deployments/mainnet.gno.land/genesis.json
-```
-
-Its SHA-256 must be:
-
-```text
-ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0
-```
-
-The installer/updater verifies both the compressed archive and decompressed genesis before cutover.
+Store the decompressed file at `$HOME/gno/misc/deployments/mainnet.gno.land/genesis.json`; its SHA-256 must be `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`.
 
 ## Valley service layout
-
-These are operator-local paths:
 
 ```text
 source / GNOROOT:  ~/gno
@@ -81,26 +67,12 @@ keyring:           ~/.config/gno
 binaries:          ~/go/bin/gno, ~/go/bin/gnoland, ~/go/bin/gnokey
 ```
 
-The mainnet scripts read `GNOLAND_MAINNET_HOME`, `GNOLAND_MAINNET_SERVICE_NAME`, and `GNO_BIN`. They default to `$HOME/gno/gnoland-data`, `gnoland`, and `$HOME/go/bin/gno`; the generated service is `gnoland.service` unless the operator selects another valid name.
-
-The menu selects a two-digit prefix for local listeners. It keeps RPC and ABCI on loopback and binds P2P on `0.0.0.0`; the selected service file starts with:
-
-```text
-gnoland start --chainid gnoland-1 --genesis <mainnet deployment>/genesis.json --skip-genesis-sig-verification
-```
-
-The official persistent peers are configured as one comma-separated value:
-
-```text
-g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656
-```
+The scripts default to `gnoland.service`, keep RPC/ABCI loopback-only, and expose P2P for peer connectivity.
 
 ## Validation and candidate status
 
-After startup, option `1e` or Node Doctor compares the local RPC network to `gnoland-1` and compares public status with `https://rpc.gno.land`. A public endpoint response does not by itself prove local service health.
+After startup, option `1e` or Node Doctor compares local RPC identity with `gnoland-1` and observes the public RPC at `https://rpc.gno.land`. A public endpoint response does not by itself prove local service health.
 
-The active validator realm is `r/sys/validators/v0`. Valley option `2c` implements the verified upstream candidate-registration flow against `gno.land/r/gnops/valopers` using `Register`, `1000000ugnot` gas fee, `50000000` gas wanted, chain ID `gnoland-1`, and `https://rpc.gno.land`. Its user-facing sequence mirrors Valley of Gnoland Testnet: operator key name, moniker, description, infrastructure type, operator `g1...` address, consensus `gpub1...` key, transaction preview, confirmation, then broadcast. Local RPC sync remains advisory because registration is signed with `gnokey` and broadcast through the public mainnet RPC. Before preview/broadcast, Mainnet verifies signer/address consistency, input format, and `gno.land/r/sys/params.GetValoperRegisterFee()==0`.
-
-Mainnet has no public faucet. The operator key must control the supplied operator `g1...` address and the account must already hold enough GNOT to pay fees. A successful registration creates only a valoper candidate profile; a GovDAO proposal must still add the candidate to `r/sys/validators/v0` before the node becomes active.
+Option `2c` uses `gno.land/r/gnops/valopers.Register`, `1000000ugnot` gas fee, `50000000` gas wanted, chain ID `gnoland-1`, and `https://rpc.gno.land`. Local sync is advisory because the transaction is signed with `gnokey` and broadcast through the public mainnet RPC. Registration creates only a candidate profile; GovDAO must still approve admission to `r/sys/validators/v0`.
 
 Snapshot application is disabled until a provider is independently verified for `gnoland-1`.

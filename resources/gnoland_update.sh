@@ -22,30 +22,25 @@ PREVIOUS_PROFILE_PRESENT=false
 
 readonly CHAIN_ID="gnoland-1"
 readonly SOURCE_BRANCH="chain/mainnet"
-readonly SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
-readonly RELEASE_TAG="chain/mainnet"
-readonly RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
-readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/chain%2Fmainnet"
-readonly GENESIS_GZ_URL="https://github.com/gnolang/gno/releases/download/chain/mainnet/genesis.json.gz"
+readonly SOURCE_TAG="v1.7.0"
+readonly SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
+readonly RELEASE_TAG="v1.7.0"
+readonly RELEASE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
+readonly RELEASE_ASSET_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.0"
+readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/v1.7.0"
+readonly CHECKSUMS_URL="https://github.com/gnolang/gno/releases/download/v1.7.0/CHECKSUMS.txt"
+readonly CHECKSUMS_SHA256="912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3"
+readonly GENESIS_RELEASE_TAG="chain/mainnet"
+readonly GENESIS_GZ_URL="https://github.com/gnolang/gno/releases/download/$GENESIS_RELEASE_TAG/genesis.json.gz"
 readonly GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"
 readonly GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly OCI_REGISTRY="ghcr.io"
-readonly GNO_IMAGE_REPOSITORY="gnolang/gno/gno"
-readonly GNO_IMAGE_MANIFEST_DIGEST="sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc"
-readonly GNO_BINARY_LAYER_DIGEST="sha256:676c5d4e100062b2caf1c629411581c6858fedd7b632c2248ca50b1c3204b5ff"
-readonly GNO_BINARY_PATH="/usr/bin/gno"
-readonly GNO_BIN_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
-readonly GNOLAND_IMAGE_REPOSITORY="gnolang/gno/gnoland"
-readonly GNOLAND_IMAGE_MANIFEST_DIGEST="sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0"
-readonly GNOLAND_BINARY_LAYER_DIGEST="sha256:b31ea46c33fd7cdb08f43975e079f5339e5f4ba672e121750a4ca6bce266ab63"
-readonly GNOLAND_BINARY_PATH="/usr/bin/gnoland"
-readonly GNOLAND_BIN_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
-readonly GNOKEY_IMAGE_REPOSITORY="gnolang/gno/gnokey"
-readonly GNOKEY_IMAGE_MANIFEST_DIGEST="sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71"
-readonly GNOKEY_BINARY_LAYER_DIGEST="sha256:fe63ba3901c28e13a488fe20efc6e3c8b3524b61f52645f5c89084a448955352"
-readonly GNOKEY_BINARY_PATH="/usr/bin/gnokey"
-readonly GNOKEY_BIN_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
-readonly ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"
+readonly GNO_ASSET="gno_linux_amd64"
+readonly GNO_BIN_SHA256="7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79"
+readonly GNOLAND_ASSET="gnoland_linux_amd64"
+readonly GNOLAND_BIN_SHA256="5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51"
+readonly GNOKEY_ASSET="gnokey_linux_amd64"
+readonly GNOKEY_BIN_SHA256="8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e"
+readonly ASSET_VERSION="v1.7.0"
 readonly PUBLIC_RPC="https://rpc.gno.land"
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
 readonly PROFILE_END="# <<< GRAND VALLEY GNOLAND MAINNET <<<"
@@ -195,57 +190,42 @@ verify_reported_version() {
     echo -e "${GREEN}Verified $label reported version: $version${RESET}"
 }
 
-stage_oci_binary() {
-    local label=$1 repository=$2 manifest_digest=$3 layer_digest=$4 binary_path=$5 expected_sha=$6 output=$7
-    local token manifest_file layer_file binary_file tar_path
-    manifest_file="$TMP_DIR/oci-${label}.manifest.json"
-    layer_file="$TMP_DIR/oci-${label}.layer.tar.gz"
-    binary_file="$TMP_DIR/oci-${label}.binary"
-    tar_path=${binary_path#/}
-
-    token=$(curl -m 30 -fsSL "https://${OCI_REGISTRY}/token?scope=repository:${repository}:pull" | jq -er '.token')
-    curl -m 120 -fsSL \
-        -H "Authorization: Bearer $token" \
-        -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
-        "https://${OCI_REGISTRY}/v2/${repository}/manifests/${manifest_digest}" -o "$manifest_file"
-    printf '%s  %s\n' "${manifest_digest#sha256:}" "$manifest_file" | sha256sum --check - >/dev/null
-    jq -e --arg digest "$layer_digest" \
-        '(.schemaVersion == 2) and any(.layers[]?; .digest == $digest and .mediaType == "application/vnd.oci.image.layer.v1.tar+gzip")' \
-        "$manifest_file" >/dev/null
-
-    curl -m 120 -fsSL -H "Authorization: Bearer $token" \
-        "https://${OCI_REGISTRY}/v2/${repository}/blobs/${layer_digest}" -o "$layer_file"
-    printf '%s  %s\n' "${layer_digest#sha256:}" "$layer_file" | sha256sum --check - >/dev/null
-    tar -tzf "$layer_file" | grep -Fxq "$tar_path" || {
-        echo "${label} OCI layer does not contain ${binary_path}." >&2
-        return 1
-    }
-    tar -xOzf "$layer_file" "$tar_path" > "$binary_file"
-    printf '%s  %s\n' "$expected_sha" "$binary_file" | sha256sum --check - >/dev/null
-    chmod 0755 "$binary_file"
-    install -m 0755 "$binary_file" "$output"
+stage_release_binary() {
+    local label=$1 asset=$2 expected_sha=$3 output=$4
+    local asset_file="$TMP_DIR/${label}.asset"
+    if [ ! -f "$TMP_DIR/CHECKSUMS.txt" ]; then
+        curl -m 120 -fsSL "$CHECKSUMS_URL" -o "$TMP_DIR/CHECKSUMS.txt"
+        printf '%s  %s\n' "$CHECKSUMS_SHA256" "$TMP_DIR/CHECKSUMS.txt" | sha256sum --check - >/dev/null
+    fi
+    grep -E "^[0-9a-f]{64}[[:space:]]+[*]?$asset$" "$TMP_DIR/CHECKSUMS.txt" | grep -F "$expected_sha" >/dev/null
+    curl -m 120 -fsSL "$RELEASE_ASSET_BASE_URL/$asset" -o "$asset_file"
+    printf '%s  %s\n' "$expected_sha" "$asset_file" | sha256sum --check - >/dev/null
+    chmod 0755 "$asset_file"
+    install -m 0755 "$asset_file" "$output"
     printf '%s  %s\n' "$expected_sha" "$output" | sha256sum --check - >/dev/null
+    verify_reported_version "$output" "$label" "$label"
 }
-
 check_upstream_release_drift() {
-    local json observed_target observed_genesis
+    local json observed_tag checksums_digest observed_digest asset expected
     CURRENT_STAGE="check upstream release drift"
     json=$(curl -m 15 -fsSL "$RELEASE_API_URL" 2>/dev/null || true)
     if [ -z "$json" ]; then
-        echo -e "${YELLOW}Upstream release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
+        echo -e "${YELLOW}Upstream v1.7.0 release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
         return 0
     fi
-    observed_target=$(printf '%s' "$json" | jq -r '.target_commitish // empty')
-    observed_genesis=$(printf '%s' "$json" | jq -r '.assets[]? | select(.name=="genesis.json") | .digest' | head -n 1)
-    if [ "$observed_target" != "$RELEASE_COMMIT" ] || \
-       [ "$observed_genesis" != "sha256:$GENESIS_SHA256" ]; then
-        echo -e "${RED}Upstream chain/mainnet release metadata differs from Valley's reviewed pins.${RESET}" >&2
-        echo "No service or binary was changed. Review and update Valley pins before continuing." >&2
-        return 1
-    fi
-    echo -e "${GREEN}Upstream release digests still match Valley's reviewed pins.${RESET}"
+    observed_tag=$(printf '%s' "$json" | jq -r '.tag_name // empty')
+    [ "$observed_tag" = "$RELEASE_TAG" ] || { echo "Upstream release tag is ${observed_tag:-unavailable}, expected $RELEASE_TAG." >&2; return 1; }
+    checksums_digest=$(printf '%s' "$json" | jq -r '.assets[]? | select(.name=="CHECKSUMS.txt") | .digest' | head -n 1)
+    [ "$checksums_digest" = "sha256:$CHECKSUMS_SHA256" ] || { echo "CHECKSUMS.txt digest differs from the reviewed v1.7.0 release." >&2; return 1; }
+    for pair in "$GNO_ASSET $GNO_BIN_SHA256" "$GNOLAND_ASSET $GNOLAND_BIN_SHA256" "$GNOKEY_ASSET $GNOKEY_BIN_SHA256"; do
+        set -- $pair
+        asset=$1
+        expected=$2
+        observed_digest=$(printf '%s' "$json" | jq -r --arg name "$asset" '.assets[]? | select(.name==$name) | .digest' | head -n 1)
+        [ "$observed_digest" = "sha256:$expected" ] || { echo "$asset digest differs from the reviewed v1.7.0 release." >&2; return 1; }
+    done
+    echo -e "${GREEN}Official v1.7.0 release metadata and digests still match Valley's reviewed pins.${RESET}"
 }
-
 wait_for_rpc_health() {
     local rpc_port rpc_url status network
     rpc_port=$(awk -F: '/^[[:space:]]*\[rpc\][[:space:]]*$/ {in_rpc=1; next} /^[[:space:]]*\[/ {in_rpc=0} in_rpc && /^[[:space:]]*laddr = "tcp:\/\// {gsub(/".*/, "", $NF); print $NF; exit}' "$GNOLAND_MAINNET_HOME/config/config.toml" 2>/dev/null || true)
@@ -316,7 +296,7 @@ fi
 
 check_upstream_release_drift
 CURRENT_STAGE="verify reviewed source and tag"
-release_tag_commit=$(git -C "$GNO_SOURCE_DIR" ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk 'NR == 1 {print $1}' || true)
+release_tag_commit=$(git -C "$GNO_SOURCE_DIR" ls-remote origin "refs/tags/$SOURCE_TAG^{}" | awk 'NR == 1 {print $1}' || true)
 [ "$release_tag_commit" = "$RELEASE_COMMIT" ] || { echo "The $RELEASE_TAG tag moved from the reviewed release commit." >&2; exit 1; }
 branch_tip=$(git -C "$GNO_SOURCE_DIR" ls-remote --refs origin "refs/heads/$SOURCE_BRANCH" | awk 'NR == 1 {print $1}' || true)
 if [ -n "$branch_tip" ] && [ "$branch_tip" != "$SOURCE_COMMIT" ]; then
@@ -370,14 +350,10 @@ git -C "$TMP_DIR/stage-source" checkout --detach --force "$SOURCE_COMMIT" >/dev/
 [ "$(git -C "$TMP_DIR/stage-source" rev-parse HEAD)" = "$SOURCE_COMMIT" ]
 [ -d "$TMP_DIR/stage-source/misc/deployments/mainnet.gno.land" ] || { echo "Pinned source lacks mainnet deployment files." >&2; exit 1; }
 
-CURRENT_STAGE="stage and verify immutable GHCR OCI binaries"
-stage_oci_binary gno "$GNO_IMAGE_REPOSITORY" "$GNO_IMAGE_MANIFEST_DIGEST" "$GNO_BINARY_LAYER_DIGEST" "$GNO_BINARY_PATH" "$GNO_BIN_SHA256" "$TMP_DIR/gno"
-verify_reported_version "$TMP_DIR/gno" "gno" gno
-stage_oci_binary gnoland "$GNOLAND_IMAGE_REPOSITORY" "$GNOLAND_IMAGE_MANIFEST_DIGEST" "$GNOLAND_BINARY_LAYER_DIGEST" "$GNOLAND_BINARY_PATH" "$GNOLAND_BIN_SHA256" "$TMP_DIR/gnoland"
-verify_reported_version "$TMP_DIR/gnoland" "gnoland" gnoland
-stage_oci_binary gnokey "$GNOKEY_IMAGE_REPOSITORY" "$GNOKEY_IMAGE_MANIFEST_DIGEST" "$GNOKEY_BINARY_LAYER_DIGEST" "$GNOKEY_BINARY_PATH" "$GNOKEY_BIN_SHA256" "$TMP_DIR/gnokey"
-verify_reported_version "$TMP_DIR/gnokey" "gnokey" gnokey
-
+CURRENT_STAGE="stage and verify v1.7.0 release assets"
+stage_release_binary gno "$GNO_ASSET" "$GNO_BIN_SHA256" "$TMP_DIR/gno"
+stage_release_binary gnoland "$GNOLAND_ASSET" "$GNOLAND_BIN_SHA256" "$TMP_DIR/gnoland"
+stage_release_binary gnokey "$GNOKEY_ASSET" "$GNOKEY_BIN_SHA256" "$TMP_DIR/gnokey"
 CURRENT_STAGE="stage and verify compressed genesis"
 curl -fsSL "$GENESIS_GZ_URL" -o "$TMP_DIR/genesis.json.gz"
 printf '%s  %s\n' "$GENESIS_GZ_SHA256" "$TMP_DIR/genesis.json.gz" | sha256sum --check - >/dev/null

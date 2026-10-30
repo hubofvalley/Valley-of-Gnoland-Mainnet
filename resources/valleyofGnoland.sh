@@ -11,17 +11,19 @@ RESET='\033[0m'
 readonly GNOLAND_CHAIN_ID_DEFAULT="gnoland-1"
 readonly GNOLAND_PUBLIC_RPC_DEFAULT="https://rpc.gno.land"
 readonly GNOLAND_SOURCE_BRANCH="chain/mainnet"
-readonly GNOLAND_SOURCE_COMMIT="e75fef82c02876a4df92ad6e325c5479b9532168"
-readonly GNOLAND_RELEASE_TAG="chain/mainnet"
-readonly GNOLAND_RELEASE_COMMIT="9c8eb132e483d6fd324d92c193e629ad65a98a37"
-readonly GNOLAND_ASSET_VERSION="heads/chain/mainnet.3444+e75fef82c"
+readonly GNOLAND_SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
+readonly GNOLAND_RELEASE_TAG="v1.7.0"
+readonly GNOLAND_RELEASE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
+readonly GNOLAND_ASSET_VERSION="v1.7.0"
 readonly GNOLAND_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly GNO_BIN_SHA256="423a64b605400882ac6ae016ef517b2465d64c49e71fd8d45d6d3a6ecfe0e87d"
-readonly GNOLAND_BIN_SHA256="5f568a5c96f9a0f9f20f5b0adbc72cc0d5c640e82bd3c7b129bb629758f029bc"
-readonly GNOKEY_BIN_SHA256="2d9f3019107403879e7b9f398deb15107945f33b91bc4ee85b938ff7f60b03cd"
-readonly GNO_IMAGE_REF="ghcr.io/gnolang/gno/gno@sha256:307b3143ab53c025e9e51a0221fbed3c531517140654c91744e8de2b612fc2bc"
-readonly GNOLAND_IMAGE_REF="ghcr.io/gnolang/gno/gnoland@sha256:ef516db1c3de66c93d502fbcb28978d8560ec64e33b7e6a1ae6bf9fdc446f0b0"
-readonly GNOKEY_IMAGE_REF="ghcr.io/gnolang/gno/gnokey@sha256:6fee82874a9d0506d7cc31e86bb2c2a1fb396d5933cf7bfbb05513589de67e71"
+readonly GNO_BIN_SHA256="7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79"
+readonly GNOLAND_BIN_SHA256="5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51"
+readonly GNOKEY_BIN_SHA256="8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e"
+readonly GNOLAND_RELEASE_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.0"
+readonly GNOLAND_CHECKSUMS_SHA256="912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3"
+readonly GNOLAND_GNO_ASSET="gno_linux_amd64"
+readonly GNOLAND_GNOLAND_ASSET="gnoland_linux_amd64"
+readonly GNOLAND_GNOKEY_ASSET="gnokey_linux_amd64"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
@@ -166,7 +168,7 @@ ${GREEN}Gno.land gnoland-1 Node${RESET}
 - operator keyring: ${CYAN}${GNOKEY_HOME}${RESET}
 - binaries: ${CYAN}$HOME/go/bin/gno, $HOME/go/bin/gnoland, $HOME/go/bin/gnokey${RESET}
 - service file: ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}
-- release assets: ${CYAN}immutable GHCR OCI images, Linux amd64 binaries extracted from /usr/bin${RESET}
+- release assets: ${CYAN}official v1.7.0 Linux amd64 release assets${RESET}
 - hardware requirements: ${CYAN}not asserted by this Valley${RESET}
 "
 
@@ -192,7 +194,7 @@ Gno.land useful links:${RESET}
 - Gno source: ${BLUE}https://github.com/gnolang/gno${RESET}
 - Source branch: ${BLUE}https://github.com/gnolang/gno/tree/chain/mainnet${RESET}
 - Mainnet deployment: ${BLUE}https://github.com/gnolang/gno/tree/chain/mainnet/misc/deployments/mainnet.gno.land${RESET}
-- Release: ${BLUE}https://github.com/gnolang/gno/releases/tag/chain%2Fmainnet${RESET}
+- Release: ${BLUE}https://github.com/gnolang/gno/releases/tag/v1.7.0${RESET}
 
 ${GREEN}Network facts:${RESET}
 - Chain ID: ${CYAN}gnoland-1${RESET}
@@ -201,7 +203,8 @@ ${GREEN}Network facts:${RESET}
 - gno Linux amd64 SHA256: ${CYAN}${GNO_BIN_SHA256}${RESET}
 - gnoland Linux amd64 SHA256: ${CYAN}${GNOLAND_BIN_SHA256}${RESET}
 - gnokey Linux amd64 SHA256: ${CYAN}${GNOKEY_BIN_SHA256}${RESET}
-- OCI image refs: ${CYAN}${GNO_IMAGE_REF}, ${GNOLAND_IMAGE_REF}, ${GNOKEY_IMAGE_REF}${RESET}
+- Release assets: ${CYAN}${GNOLAND_RELEASE_BASE_URL}/${GNOLAND_GNO_ASSET}, ${GNOLAND_RELEASE_BASE_URL}/${GNOLAND_GNOLAND_ASSET}, ${GNOLAND_RELEASE_BASE_URL}/${GNOLAND_GNOKEY_ASSET}${RESET}
+- CHECKSUMS.txt SHA256: ${CYAN}${GNOLAND_CHECKSUMS_SHA256}${RESET}
 - Valoper candidate realm: ${CYAN}${GNOLAND_VALOPER_REALM}${RESET}
 - Active validator realm: ${CYAN}${GNOLAND_ACTIVE_REALM}${RESET}
 
@@ -295,16 +298,6 @@ source "$HOME/.bash_profile" 2>/dev/null || true
 run_repository_script() {
     local relative_path=$1 script_dir script_file exit_code
 
-    # The reviewed updater still installs the v1.5.0-equivalent source
-    # instead of the active v1.5.1 rolling patch with P2P reliability fixes.
-    # Refuse it before executing either the local or pinned remote helper.
-    case "$relative_path" in
-        resources/gnoland_update.sh)
-            echo -e "${RED}Grand Valley mainnet update blocked: pinned runtime predates the v1.5.1 rolling patch.${RESET}" >&2
-            echo "Official mainnet upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md" >&2
-            return 1
-            ;;
-    esac
     if ! script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd); then
         script_dir=""
     fi
@@ -572,7 +565,7 @@ function deploy_gnoland_node() {
     echo -e "${YELLOW}Service:${RESET} ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}"
     echo -e "${YELLOW}Directory:${RESET} ${CYAN}$GNOLAND_MAINNET_HOME${RESET}"
     echo -e "${YELLOW}Default ports:${RESET} P2P ${CYAN}26656${RESET}, RPC ${CYAN}26657${RESET}, ABCI ${CYAN}26658${RESET}; the installer remaps local listeners with the chosen two-digit prefix."
-    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus immutable GHCR OCI image digests; /usr/bin binaries are extracted and hashed before cutover."
+    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus official v1.7.0 release assets and SHA-256 checksums before cutover."
     echo -e "${YELLOW}Install safety:${RESET} all artifacts are staged first; a persistent backup is optional, while existing validator/node secrets are preserved on a recognized safe reinstall."
     echo -e "${RED}Installation rebuilds Valley node database/config only after staging and explicit confirmation.${RESET}"
     echo
@@ -1394,7 +1387,7 @@ function show_endpoints() {
 function show_guidelines() {
     echo -e "${CYAN}Guidelines on How to Use the Valley of Gnoland${RESET}"
     echo -e "${GREEN}Recommended flow:${RESET}"
-    echo " - 1a Install the node from the pinned mainnet source and immutable GHCR OCI assets"
+    echo " - 1a Install the node from the pinned mainnet source and official v1.7.0 release assets"
     echo " - 1e Confirm local RPC reports gnoland-1 and monitor sync"
     echo " - 1g Run the read-only Node Doctor"
     echo " - 2a Manage an operator key only after reviewing key safety"
@@ -1402,8 +1395,8 @@ function show_guidelines() {
     echo -e "${YELLOW}Mainnet candidate registration is enabled in option 2c using the verified upstream procedure. Snapshot application remains disabled until a provider is independently verified.${RESET}"
     echo
     echo -e "${GREEN}Node Interactions:${RESET}"
-    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and OCI image assets, then starts gnoland-1."
-    echo "   b) Update Gno/Gnoland/Gnokey: verifies the pinned source and OCI image assets."
+    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and official v1.7.0 release assets, then starts gnoland-1."
+    echo "   b) Update Gno/Gnoland/Gnokey: verifies the pinned source and official v1.7.0 release assets."
     echo "   c) Apply Snapshot: fails closed without a verified gnoland-1 provider."
     echo "   d) Add/Reset Peers: manages persistent peers and the official mainnet seed list."
     echo "   e) Show Node Status: shows local health and comparison-RPC height."
@@ -1442,7 +1435,7 @@ function menu() {
     echo
     echo "1. Node Interactions"
     echo "   1a. Deploy/Re-deploy Gnoland Node"
-    echo "   1b. Update Gno/Gnoland/Gnokey from Pinned Mainnet OCI Assets (${GNOLAND_ASSET_VERSION})"
+    echo "   1b. Update Gno/Gnoland/Gnokey from official v1.7.0 release assets (${GNOLAND_ASSET_VERSION})"
     echo "   1c. Apply Snapshot"
     echo "   1d. Add/Reset Peers"
     echo "   1e. Show Node Status"
