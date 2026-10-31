@@ -32,6 +32,8 @@ gnokey   8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
+Disk capacity is an advisory signal: `PASS` means the node data filesystem reports at least 20 GiB free, while `WARN` means less than 20 GiB or the filesystem probe could not determine available capacity. An unavailable `df` reading is never reported as healthy. This check does not predict future disk growth or replace storage monitoring.
+
 ## Exit codes
 
 - `0`: no FAIL results; normal WARN results are allowed.
