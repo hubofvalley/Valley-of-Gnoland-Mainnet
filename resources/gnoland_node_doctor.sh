@@ -212,10 +212,12 @@ fi
 
 if [ -d "$GNOLAND_MAINNET_HOME" ]; then
     free_kb=$(df -Pk "$GNOLAND_MAINNET_HOME" 2>/dev/null | awk 'NR==2 {print $4}')
-    if [[ "$free_kb" =~ ^[0-9]+$ ]] && [ "$free_kb" -lt 20971520 ]; then
+    if [[ ! "$free_kb" =~ ^[0-9]+$ ]]; then
+        record WARN disk "node filesystem free capacity could not be determined"
+    elif [ "$free_kb" -lt 20971520 ]; then
         record WARN disk "less than 20 GiB free on the node filesystem"
     else
-        record PASS disk "node filesystem has at least 20 GiB free or capacity was not constrained"
+        record PASS disk "node filesystem has at least 20 GiB free"
     fi
 fi
 
