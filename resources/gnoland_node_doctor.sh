@@ -88,6 +88,19 @@ read_active_persistent_peers() {
     ' "$1"
 }
 
+# Since v1.5.1, only the last address for a repeated persistent peer ID
+# is dialed. Diagnose duplicate IDs without changing the operator's config.
+check_persistent_peer_duplicates() {
+    local config=$1 configured_peers duplicate_id
+    configured_peers=$(read_active_persistent_peers "$config")
+    duplicate_id=$(printf '%s\n' "$configured_peers" | tr ',' '\n' | awk -F@ '
+        NF >= 2 && $1 ~ /^[[:alnum:]]+$/ { if (seen[$1]++) { print $1; exit } }
+    ')
+    if [ -n "$duplicate_id" ]; then
+        record WARN peer_id_reuse "persistent_peers repeats peer ID $duplicate_id; gnoland v1.5.1 dials only its last configured address"
+    fi
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -141,6 +154,7 @@ if [ -f "$CONFIG_FILE" ]; then
     else
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
+    check_persistent_peer_duplicates "$CONFIG_FILE"
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi

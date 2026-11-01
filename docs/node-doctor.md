@@ -17,7 +17,7 @@ The doctor checks:
 - v1.7.0 Linux amd64 `gno`, `gnoland`, and `gnokey` executable hashes;
 - the pinned v1.7.0 source tag commit `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`;
-- the effective `p2p.persistent_peers` value and service startup flags;
+- the effective `p2p.persistent_peers` value, repeated peer IDs, and service startup flags;
 - local RPC network identity, `catching_up`, height, and live peer count;
 - the official comparison RPC identity and observed height; and
 - basic time and disk safety signals.
