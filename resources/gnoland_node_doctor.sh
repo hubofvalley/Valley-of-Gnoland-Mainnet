@@ -71,6 +71,50 @@ record() {
     esac
 }
 
+# Inspect the effective [p2p] value, not commented examples or other sections.
+# This intentionally accepts the usual single-line TOML string; other forms
+# remain unverified and therefore produce a warning rather than a false PASS.
+read_active_persistent_peers() {
+    awk '
+        /^[[:space:]]*\[p2p\][[:space:]]*(#.*)?$/ { in_p2p = 1; next }
+        /^[[:space:]]*\[/ { in_p2p = 0 }
+        in_p2p && /^[[:space:]]*persistent_peers[[:space:]]*=[[:space:]]*"/ {
+            value = $0
+            sub(/^[[:space:]]*persistent_peers[[:space:]]*=[[:space:]]*"/, "", value)
+            close_quote = index(value, "\"")
+            if (close_quote == 0) {
+                exit
+            }
+            trailing = substr(value, close_quote + 1)
+            if (trailing !~ /^[[:space:]]*(#.*)?$/) {
+                exit
+            }
+            print substr(value, 1, close_quote - 1)
+            exit
+        }
+    ' "$1"
+}
+
+# Since v1.5.1, only the last address for a repeated persistent peer ID
+# is dialed. Diagnose duplicate IDs without changing the operator's config.
+check_persistent_peer_duplicates() {
+    local config=$1 configured_peers duplicate_id
+    configured_peers=$(read_active_persistent_peers "$config")
+    duplicate_id=$(printf '%s\n' "$configured_peers" | tr ',' '\n' | awk -F@ '
+        {
+            peer_id = $1
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", peer_id)
+            if (peer_id ~ /^[[:alnum:]]+$/ && seen[peer_id]++) {
+                print peer_id
+                exit
+            }
+        }
+    ')
+    if [ -n "$duplicate_id" ]; then
+        record WARN peer_id_reuse "persistent_peers repeats peer ID $duplicate_id; gnoland v1.5.1 dials only its last configured address"
+    fi
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -118,11 +162,13 @@ else
 fi
 
 if [ -f "$CONFIG_FILE" ]; then
-    if grep -Fq "persistent_peers = \"$EXPECTED_PERSISTENT_PEERS\"" "$CONFIG_FILE"; then
+    configured_peers=$(read_active_persistent_peers "$CONFIG_FILE")
+    if [ "$configured_peers" = "$EXPECTED_PERSISTENT_PEERS" ]; then
         record PASS peers "both official mainnet persistent peers are configured"
     else
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
+    check_persistent_peer_duplicates "$CONFIG_FILE"
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi
