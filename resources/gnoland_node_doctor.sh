@@ -81,8 +81,15 @@ read_active_persistent_peers() {
         in_p2p && /^[[:space:]]*persistent_peers[[:space:]]*=[[:space:]]*"/ {
             value = $0
             sub(/^[[:space:]]*persistent_peers[[:space:]]*=[[:space:]]*"/, "", value)
-            sub(/".*$/, "", value)
-            print value
+            close_quote = index(value, "\"")
+            if (close_quote == 0) {
+                exit
+            }
+            trailing = substr(value, close_quote + 1)
+            if (trailing !~ /^[[:space:]]*(#.*)?$/) {
+                exit
+            }
+            print substr(value, 1, close_quote - 1)
             exit
         }
     ' "$1"
@@ -94,7 +101,14 @@ check_persistent_peer_duplicates() {
     local config=$1 configured_peers duplicate_id
     configured_peers=$(read_active_persistent_peers "$config")
     duplicate_id=$(printf '%s\n' "$configured_peers" | tr ',' '\n' | awk -F@ '
-        NF >= 2 && $1 ~ /^[[:alnum:]]+$/ { if (seen[$1]++) { print $1; exit } }
+        {
+            peer_id = $1
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", peer_id)
+            if (peer_id ~ /^[[:alnum:]]+$/ && seen[peer_id]++) {
+                print peer_id
+                exit
+            }
+        }
     ')
     if [ -n "$duplicate_id" ]; then
         record WARN peer_id_reuse "persistent_peers repeats peer ID $duplicate_id; gnoland v1.5.1 dials only its last configured address"

@@ -41,6 +41,16 @@ case "$warning" in
     *) fail "duplicate peer ID was not diagnosed correctly: $warning" ;;
 esac
 
+cat > "$CONFIG" <<'EOF_DUPLICATE_SPACED'
+[p2p]
+persistent_peers = "g1first@seed-a:26656, g1first@seed-b:26656"
+EOF_DUPLICATE_SPACED
+warning=$(run_guard "$CONFIG")
+case "$warning" in
+    'WARN|peer_id_reuse|persistent_peers repeats peer ID g1first; gnoland v1.5.1 dials only its last configured address') ;;
+    *) fail "spaced duplicate peer ID was not diagnosed correctly: $warning" ;;
+esac
+
 cat > "$CONFIG" <<'EOF_OTHER_SECTION'
 [other]
 persistent_peers = "g1first@seed-a:26656,g1first@seed-b:26656"

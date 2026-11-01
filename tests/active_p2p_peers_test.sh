@@ -34,6 +34,9 @@ assert_peers() {
 printf '[p2p]\npersistent_peers = "%s" # reviewed defaults\n' "$expected" > "$config"
 assert_peers "active official peers" "$expected"
 
+printf '[p2p]\npersistent_peers = "%s" trailing-junk\n' "$expected" > "$config"
+assert_peers "trailing syntax must not pass" ""
+
 printf '[p2p]\n# persistent_peers = "%s"\npersistent_peers = "g1wrong@seed:26656"\n' "$expected" > "$config"
 assert_peers "commented official peers must not pass" "g1wrong@seed:26656"
 
