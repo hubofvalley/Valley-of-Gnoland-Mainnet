@@ -71,6 +71,41 @@ record() {
     esac
 }
 
+# Top-level upgrade overrides can affect local halts and binary-version gates.
+# Inspect only effective root keys; nested sections and comments are unrelated.
+check_local_upgrade_overrides() {
+    local config=$1 key raw
+    while IFS='|' read -r key raw; do
+        [ -n "$key" ] || continue
+        # Zero is the documented default. Unexpected or malformed values need
+        # operator review, never automatic correction by Node Doctor.
+        if [[ "$raw" =~ ^0+$ ]]; then
+            continue
+        fi
+        case "$key" in
+            halt_height)
+                record WARN local_halt_override "config.toml has nonzero or unrecognized halt_height; the node may halt independently of governance"
+                ;;
+            skip_upgrade_height)
+                record WARN upgrade_gate_bypass "config.toml has nonzero or unrecognized skip_upgrade_height; a matching governance halt height bypasses binary-version startup gates"
+                ;;
+        esac
+    done < <(awk '
+        BEGIN { root = 1 }
+        /^[[:space:]]*\[/ { root = 0 }
+        root && /^[[:space:]]*(halt_height|skip_upgrade_height)[[:space:]]*=/ {
+            key = $0
+            sub(/^[[:space:]]*/, "", key)
+            sub(/[[:space:]]*=.*/, "", key)
+            value = $0
+            sub(/^[^=]*=/, "", value)
+            sub(/[[:space:]]*#.*/, "", value)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            print key "|" value
+        }
+    ' "$config")
+}
+
 # Inspect the effective [p2p] value, not commented examples or other sections.
 # This intentionally accepts the usual single-line TOML string; other forms
 # remain unverified and therefore produce a warning rather than a false PASS.
@@ -162,6 +197,7 @@ else
 fi
 
 if [ -f "$CONFIG_FILE" ]; then
+    check_local_upgrade_overrides "$CONFIG_FILE"
     configured_peers=$(read_active_persistent_peers "$CONFIG_FILE")
     if [ "$configured_peers" = "$EXPECTED_PERSISTENT_PEERS" ]; then
         record PASS peers "both official mainnet persistent peers are configured"
