@@ -18,6 +18,7 @@ The doctor checks:
 - the pinned v1.7.0 source tag commit `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`;
 - the effective `p2p.persistent_peers` value, repeated peer IDs, and service startup flags;
+- an advisory when the active v1.7.0 TMKMS signer listener uses a Unix socket;
 - local RPC network identity, `catching_up`, height, and live peer count;
 - the official comparison RPC identity and observed height; and
 - basic time and disk safety signals.
@@ -35,6 +36,16 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 `[p2p]` section. Commented examples, settings in unrelated sections, missing
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
+
+The `tmkms_uds_isolation` warning reads only the active, single-line quoted
+`listen_addr` value in `[consensus.priv_validator.tmkms_listener]`. In
+v1.7.0, Unix listeners set socket mode `0600` after binding and do not use
+`allowed_kms_pubkeys`. A same-UID signer does not isolate signer credentials
+and double-sign state from the node OS user; a separate-UID signer may need
+special permissions to connect. The warning does not prove a vulnerable
+deployment or inspect live socket permissions, signer processes, or keys.
+Review the upstream [TMKMS guidance](https://github.com/gnolang/gno/blob/v1.7.0/gno.land/cmd/gnoland/TMKMS.md)
+before changing signer architecture. Unsupported TOML forms are not certified.
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
