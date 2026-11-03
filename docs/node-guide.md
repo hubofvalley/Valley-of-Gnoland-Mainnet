@@ -69,6 +69,26 @@ binaries:          ~/go/bin/gno, ~/go/bin/gnoland, ~/go/bin/gnokey
 
 The scripts default to `gnoland.service`, keep RPC/ABCI loopback-only, and expose P2P for peer connectivity.
 
+## Validator signer isolation
+
+Grand Valley's node management does not configure or validate an external
+consensus signer. For material-stake validators, refer to the
+[upstream v1.7.0 TMKMS guide](https://github.com/gnolang/gno/blob/v1.7.0/gno.land/cmd/gnoland/TMKMS.md)
+before choosing between a local key, a TMKMS listener, or another supported
+signer mode. Keep the signer's double-sign state and any HSM credentials
+separate from the network-facing node where possible.
+
+**v1.7.0 Unix-socket caveat:** the `unix://` TMKMS listener sets mode
+`0600` after binding and ignores `allowed_kms_pubkeys`. A signer under a
+different UID cannot normally connect without separate permission handling;
+running it under the node UID forfeits OS-user isolation. Upstream
+[issue #6439](https://github.com/gnolang/gno/issues/6439) tracks this
+limitation. Its proposed `socket_mode` setting is **not available in the
+pinned v1.7.0 release**. For isolated signer-host deployments, upstream
+documents a TCP listener with explicit signer pubkey allowlisting, network
+restrictions, matching chain ID, and the supported `v0.34` protocol.
+Do not change live signer wiring or signing state through this tooling.
+
 ## Validation and candidate status
 
 After startup, option `1e` or Node Doctor compares local RPC identity with `gnoland-1` and observes the public RPC at `https://rpc.gno.land`. A public endpoint response does not by itself prove local service health.
