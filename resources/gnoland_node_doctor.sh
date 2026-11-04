@@ -71,6 +71,27 @@ record() {
     esac
 }
 
+# A disabled fast-sync flag is not proof that the node has produced/received blocks.
+# Avoid a healthy-looking PASS when /status omits or zeroes latest_block_height.
+report_local_sync() {
+    local catching_up=$1 height=$2
+    case "$catching_up" in
+        false)
+            if [[ "$height" =~ ^0*[1-9][0-9]*$ ]]; then
+                record PASS local_sync "local RPC reports catching_up=false at height $height"
+            else
+                record WARN local_sync "local RPC reports catching_up=false but latest block height is missing, zero, or invalid"
+            fi
+            ;;
+        true)
+            record WARN local_sync "local RPC reports catching_up=true at height ${height:-unknown}"
+            ;;
+        *)
+            record WARN local_sync "local RPC did not expose a valid catching_up state"
+            ;;
+    esac
+}
+
 # Inspect the effective [p2p] value, not commented examples or other sections.
 # This intentionally accepts the usual single-line TOML string; other forms
 # remain unverified and therefore produce a warning rather than a false PASS.
@@ -199,17 +220,7 @@ else
 fi
 
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
-    case "$local_catching_up" in
-        false)
-            record PASS local_sync "local RPC reports catching_up=false at height ${local_height:-unknown}"
-            ;;
-        true)
-            record WARN local_sync "local RPC reports catching_up=true at height ${local_height:-unknown}"
-            ;;
-        *)
-            record WARN local_sync "local RPC did not expose a valid catching_up state"
-            ;;
-    esac
+    report_local_sync "$local_catching_up" "$local_height"
 fi
 
 local_net_info=$(curl -m 5 -fsS "${GNOLAND_REMOTE%/}/net_info" 2>/dev/null || true)
