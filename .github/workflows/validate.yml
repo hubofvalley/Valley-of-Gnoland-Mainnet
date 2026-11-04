@@ -50,6 +50,9 @@ jobs:
       - name: Run mainnet Node Doctor regression test
         run: bash tests/node_doctor_test.sh
 
+      - name: Run local sync height diagnostic fixtures
+        run: bash tests/local_sync_height_test.sh
+
       - name: Run active P2P peer configuration fixtures
         run: bash tests/active_p2p_peers_test.sh
 
