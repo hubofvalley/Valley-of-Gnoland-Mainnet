@@ -53,6 +53,9 @@ jobs:
       - name: Run active P2P peer configuration fixtures
         run: bash tests/active_p2p_peers_test.sh
 
+      - name: Run active mainnet pruning configuration fixtures
+        run: bash tests/prune_strategy_guard_test.sh
+
       - name: Run persistent-peer diagnostic fixtures
         run: bash tests/persistent_peer_guard_test.sh
 
