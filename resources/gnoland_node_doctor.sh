@@ -95,6 +95,27 @@ read_active_persistent_peers() {
     ' "$1"
 }
 
+# Only a single, active quoted value under [application] can establish the
+# reviewed mainnet pruning setting. Unsupported TOML stays unverified.
+read_active_prune_strategy() {
+    awk '
+        /^[[:space:]]*\[/ {
+            in_application = ($0 ~ /^[[:space:]]*\[application\][[:space:]]*(#.*)?$/)
+            next
+        }
+        in_application && /^[[:space:]]*prune_strategy[[:space:]]*=/ {
+            count++
+            value = $0
+            sub(/^[[:space:]]*prune_strategy[[:space:]]*=[[:space:]]*"/, "", value)
+            end_quote = index(value, "\"")
+            if (end_quote > 0 && substr(value, end_quote + 1) ~ /^[[:space:]]*(#.*)?$/) {
+                parsed = substr(value, 1, end_quote - 1)
+            }
+        }
+        END { if (count == 1 && parsed != "") print parsed }
+    ' "$1"
+}
+
 # Since v1.5.1, only the last address for a repeated persistent peer ID
 # is dialed. Diagnose duplicate IDs without changing the operator's config.
 check_persistent_peer_duplicates() {
@@ -169,6 +190,12 @@ if [ -f "$CONFIG_FILE" ]; then
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
     check_persistent_peer_duplicates "$CONFIG_FILE"
+    configured_pruning=$(read_active_prune_strategy "$CONFIG_FILE")
+    if [ "$configured_pruning" = "syncable" ]; then
+        record PASS prune_strategy "active application.prune_strategy matches mainnet-required syncable"
+    else
+        record WARN prune_strategy "active application.prune_strategy is missing, unreadable, or not syncable; review the official mainnet validator configuration"
+    fi
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi
