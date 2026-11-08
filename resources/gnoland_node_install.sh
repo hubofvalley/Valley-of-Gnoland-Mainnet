@@ -193,6 +193,25 @@ EOF_PROFILE
     mv "$tmp" "$profile"
 }
 
+check_host_glibc() {
+    local reported major minor
+    reported=$(getconf GNU_LIBC_VERSION 2>/dev/null) || {
+        echo "Cannot determine host glibc version; official v1.7.0 Linux amd64 gnoland/gnokey assets require glibc 2.38 or newer." >&2
+        return 1
+    }
+    if [[ ! "$reported" =~ ^glibc[[:space:]]+([0-9]+)\.([0-9]+)$ ]]; then
+        echo "Cannot verify host libc ('${reported:-unavailable}'); official v1.7.0 assets require glibc 2.38 or newer." >&2
+        return 1
+    fi
+    major=$((10#${BASH_REMATCH[1]}))
+    minor=$((10#${BASH_REMATCH[2]}))
+    if (( major < 2 || (major == 2 && minor < 38) )); then
+        echo "Host glibc $major.$minor cannot run the pinned v1.7.0 Linux amd64 gnoland/gnokey assets (requires 2.38 or newer). No runtime changes made." >&2
+        return 1
+    fi
+    echo "Host glibc $major.$minor is compatible with the pinned v1.7.0 Linux amd64 assets."
+}
+
 verify_reported_version() {
     local binary=$1 label=$2 expected_label=$3 output version
     output=$("$binary" version 2>&1)
@@ -308,6 +327,13 @@ for instance_path in "$GNO_SOURCE_DIR" "$GNOLAND_DEPLOYMENT_DIR" "$GNOLAND_MAINN
     path_is_under_home "$instance_path" || { echo -e "${RED}Unsafe instance path outside $HOME: $instance_path${RESET}" >&2; false; }
 done
 
+CURRENT_STAGE="check host runtime compatibility"
+if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
+    echo -e "${RED}Only Linux amd64 is verified for these assets.${RESET}" >&2
+    false
+fi
+check_host_glibc
+
 case "$(realpath -m "$GNOLAND_MAINNET_HOME")" in
     "$(realpath -m "$GNO_SOURCE_DIR")"/*) NODE_HOME_INSIDE_SOURCE=true ;;
 esac
@@ -387,10 +413,6 @@ read -r -p "Type INSTALL-GNOLAND-1 to continue: " CONFIRM
 CURRENT_STAGE="install prerequisites before cutover"
 sudo apt update -y
 sudo apt install -y curl git jq ca-certificates gzip iproute2
-if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
-    echo -e "${RED}Only Linux amd64 is verified for these assets.${RESET}" >&2
-    false
-fi
 
 if [ -z "$EXISTING_SERVICE_FILE" ]; then
     while ! port_is_free "$GNOLAND_P2P_PORT" || ! port_is_free "$GNOLAND_RPC_PORT" || ! port_is_free "$GNOLAND_ABCI_PORT"; do

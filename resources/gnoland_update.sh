@@ -179,6 +179,25 @@ EOF_PROFILE
     mv "$tmp" "$profile"
 }
 
+check_host_glibc() {
+    local reported major minor
+    reported=$(getconf GNU_LIBC_VERSION 2>/dev/null) || {
+        echo "Cannot determine host glibc version; official v1.7.0 Linux amd64 gnoland/gnokey assets require glibc 2.38 or newer." >&2
+        return 1
+    }
+    if [[ ! "$reported" =~ ^glibc[[:space:]]+([0-9]+)\.([0-9]+)$ ]]; then
+        echo "Cannot verify host libc ('${reported:-unavailable}'); official v1.7.0 assets require glibc 2.38 or newer." >&2
+        return 1
+    fi
+    major=$((10#${BASH_REMATCH[1]}))
+    minor=$((10#${BASH_REMATCH[2]}))
+    if (( major < 2 || (major == 2 && minor < 38) )); then
+        echo "Host glibc $major.$minor cannot run the pinned v1.7.0 Linux amd64 gnoland/gnokey assets (requires 2.38 or newer). No runtime changes made." >&2
+        return 1
+    fi
+    echo "Host glibc $major.$minor is compatible with the pinned v1.7.0 Linux amd64 assets."
+}
+
 verify_reported_version() {
     local binary=$1 label=$2 expected_label=$3 output version
     output=$("$binary" version 2>&1)
@@ -266,6 +285,9 @@ if [ "$(uname -s)" != "Linux" ] || [ "$(uname -m)" != "x86_64" ]; then
     echo "The published mainnet assets are only verified for Linux amd64." >&2
     exit 1
 fi
+CURRENT_STAGE="check host runtime compatibility"
+check_host_glibc
+
 for command_name in curl git jq sha256sum gzip tar; do
     command -v "$command_name" >/dev/null 2>&1 || { echo "$command_name is required for a verified mainnet update." >&2; exit 1; }
 done

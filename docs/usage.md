@@ -24,6 +24,12 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 Option `1a` checks service ownership, verifies the v1.7.0 release metadata, stages the exact v1.7.0 source tag, all three Linux amd64 release assets, and the compressed `chain/mainnet` genesis without stopping the live node. It verifies the release checksum file, each executable hash and version, genesis, service configuration, and local RPC before cutover. Existing validator/node secrets are preserved; a persistent backup is optional.
 
+## Host compatibility for the pinned v1.7.0 Linux amd64 assets
+
+The official v1.7.0 `gnoland` and `gnokey` Linux amd64 binaries require **glibc 2.38 or newer**. They do not start on Ubuntu 22.04 (glibc 2.35) or Debian 12 (glibc 2.36). This is confirmed by the [upstream release build compatibility investigation](https://github.com/gnolang/gno/pull/6450).
+
+Before any package installation, source download, or runtime cutover, both Grand Valley install and update paths now check the host's glibc version and stop on an unsupported or unverifiable libc. The check is specific to these pinned binaries; it does not guarantee all other host requirements. No alternate binary, source build, or production configuration is selected automatically.
+
 ## Safe update behavior
 
 Option `1b` compares installed source, genesis, and all three executable hashes to the reviewed target. If everything already matches, it exits with `Already up to date` and does not restart. Otherwise it stages the exact source tag, release assets, and genesis before cutover. A failed health gate restores the previous source and tools.
