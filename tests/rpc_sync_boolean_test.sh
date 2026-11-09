@@ -8,6 +8,10 @@ fail() { echo "RPC_SYNC_BOOLEAN_TEST_FAIL: $*" >&2; exit 1; }
 
 grep -Fq 'read_rpc_catching_up() {' "$DOCTOR" || fail "typed parser missing"
 grep -Fq '| read_rpc_catching_up' "$DOCTOR" || fail "parser not wired to local RPC"
+grep -Fq 'if [[ "$local_height" =~ ^0*[1-9][0-9]*$ ]]; then' "$DOCTOR" ||
+    fail "positive-height guard missing when catching_up=false"
+grep -Fq 'record WARN local_sync "local RPC reports catching_up=false but latest block height is missing, zero, or invalid"' "$DOCTOR" ||
+    fail "missing or zero height must not PASS"
 if grep -Fq '.result.sync_info.catching_up // empty' "$DOCTOR"; then
     fail "old jq default still discards JSON false"
 fi
