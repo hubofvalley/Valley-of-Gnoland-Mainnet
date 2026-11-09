@@ -27,7 +27,8 @@ grep -Fq 'EXPECTED_PERSISTENT_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@se
 grep -Fq 'ACTIVE_VALIDATOR_REALM="r/sys/validators/v0"' "$DOCTOR" || fail "active realm guard missing"
 grep -Fq 'PUBLIC_RPC="https://rpc.gno.land"' "$DOCTOR" || fail "public RPC guard missing"
 grep -Fq '.result.sync_info.latest_block_height // empty' "$DOCTOR" || fail "latest block height visibility missing"
-grep -Fq '.result.sync_info.catching_up // empty' "$DOCTOR" || fail "catching_up visibility missing"
+grep -Fq 'read_rpc_catching_up() {' "$DOCTOR" || fail "typed catching_up parser missing"
+grep -Fq '| read_rpc_catching_up' "$DOCTOR" || fail "typed catching_up parser is not called"
 grep -Fq 'local RPC reports catching_up=false at height' "$DOCTOR" || fail "catching_up=false report missing"
 grep -Fq 'local RPC reports catching_up=true at height' "$DOCTOR" || fail "catching_up=true report missing"
 if grep -Fq 'local node is caught up' "$DOCTOR"; then
