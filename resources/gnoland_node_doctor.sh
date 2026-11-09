@@ -207,7 +207,12 @@ fi
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
     case "$local_catching_up" in
         false)
-            record PASS local_sync "local RPC reports catching_up=false at height ${local_height:-unknown}"
+            # A false fast-sync flag does not establish block progress.
+            if [[ "$local_height" =~ ^0*[1-9][0-9]*$ ]]; then
+                record PASS local_sync "local RPC reports catching_up=false at height $local_height"
+            else
+                record WARN local_sync "local RPC reports catching_up=false but latest block height is missing, zero, or invalid"
+            fi
             ;;
         true)
             record WARN local_sync "local RPC reports catching_up=true at height ${local_height:-unknown}"
