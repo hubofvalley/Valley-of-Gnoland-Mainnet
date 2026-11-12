@@ -68,6 +68,9 @@ jobs:
       - name: Run validator interaction regression test
         run: bash tests/validator_interactions_test.sh
 
+      - name: Run console RPC sync boolean fixtures
+        run: bash tests/console_rpc_sync_boolean_test.sh
+
       - name: Check patch whitespace
         run: git diff --check
 

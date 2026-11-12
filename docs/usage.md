@@ -56,6 +56,12 @@ Option `1b` compares installed source, genesis, and all three executable hashes 
 | `5` | Show guidelines. |
 | `6` | Exit. |
 
+The main menu and option `1e` preserve the RPC `catching_up` JSON boolean:
+`false` means the node reports it is not fast-syncing, while `true` means it
+reports catching up. A missing, malformed, or non-boolean field is shown as
+unknown. This field alone does not prove the node is at the network head;
+use the local and comparison block heights for additional context.
+
 ## Safety boundaries
 
 - Run as the node OS user, not with `sudo bash`.
