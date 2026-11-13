@@ -16,7 +16,7 @@ for script in "$MAIN" "$INSTALLER" "$UPDATER" "$DOCTOR"; do
   grep -Fq GNOLAND_MAINNET_HOME "$script" || fail "mainnet home missing"
   grep -Fq GNOLAND_MAINNET_SERVICE_NAME "$script" || fail "mainnet service missing"
 done
-for fact in gnoland-1 v1.7.0 e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319 9c8eb132e483d6fd324d92c193e629ad65a98a37 7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79 5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51 8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e 912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3 https://rpc.gno.land r/gnops/valopers r/sys/validators/v0; do
+for fact in gnoland-1 v1.7.0 e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319 9c8eb132e483d6fd324d92c193e629ad65a98a37 7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79 5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51 8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e 912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3 https://rpc.gno.land https://gpas.gno.land/ r/gnops/valopers r/sys/validators/v0; do
   grep -R -Fq -- "$fact" "$ROOT/README.md" "$ROOT/VERSIONS.json" "$ROOT/VALLEY.json" "$ROOT/docs" "$ROOT/resources" || fail "missing fact $fact"
 done
 for script in "$INSTALLER" "$UPDATER"; do

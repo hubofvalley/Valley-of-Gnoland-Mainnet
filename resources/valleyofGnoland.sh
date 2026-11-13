@@ -190,6 +190,7 @@ ENDPOINTS="${GREEN}
 Gno.land useful links:${RESET}
 - Web: ${BLUE}https://gno.land${RESET}
 - RPC / comparison RPC: ${BLUE}https://rpc.gno.land${RESET}
+- Package approval status: ${BLUE}https://gpas.gno.land/${RESET}
 - Faucet: ${CYAN}none - mainnet has no public faucet${RESET}
 - Gno source: ${BLUE}https://github.com/gnolang/gno${RESET}
 - Source branch: ${BLUE}https://github.com/gnolang/gno/tree/chain/mainnet${RESET}

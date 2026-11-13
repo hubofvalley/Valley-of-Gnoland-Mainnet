@@ -25,6 +25,7 @@ This repository does not automate validator admission. Option `2c` can prepare, 
 | Genesis SHA-256 | `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0` |
 | Compressed genesis SHA-256 | `32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9` |
 | RPC and comparison RPC | `https://rpc.gno.land` |
+| Package approval status | `https://gpas.gno.land/` |
 | Web | `https://gno.land` |
 | Faucet | none - mainnet has no public faucet |
 | Valoper candidate realm | `r/gnops/valopers` |
