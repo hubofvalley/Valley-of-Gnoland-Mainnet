@@ -540,6 +540,12 @@ function get_local_status_json() {
     curl -m 5 -fsS "${rpc_url%/}/status" 2>/dev/null
 }
 
+# jq's // fallback drops JSON false. Preserve a typed RPC boolean and
+# leave absent or malformed values unknown instead of inventing a sync state.
+function parse_rpc_catching_up() {
+    jq -r '.result.sync_info.catching_up | if type == "boolean" then tostring else empty end' 2>/dev/null || true
+}
+
 function get_network_height() {
     curl -m 5 -fsS "$GNOLAND_PUBLIC_REMOTE/status" 2>/dev/null | jq -r '.result.sync_info.latest_block_height // empty' 2>/dev/null
 }
@@ -677,7 +683,7 @@ function show_node_status() {
     if [ -z "$node_height" ]; then
         echo -e "${RED}Cannot reach local RPC at ${rpc_url%/}/status. Is ${GNOLAND_MAINNET_SERVICE_NAME}.service running?${RESET}"
     else
-        catching_up=$(echo "$status_json" | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null)
+        catching_up=$(echo "$status_json" | parse_rpc_catching_up)
         [ -z "$catching_up" ] && catching_up="unknown"
         latest_block_time=$(echo "$status_json" | jq -r '.result.sync_info.latest_block_time // empty' 2>/dev/null)
         [ -z "$latest_block_time" ] && latest_block_time="unknown"
@@ -1413,7 +1419,7 @@ function menu() {
     echo -e "$LOGO"
     local node_height network_height catching_up diff sync_status
     node_height=$(get_local_status_json | jq -r '.result.sync_info.latest_block_height // empty' 2>/dev/null)
-    catching_up=$(get_local_status_json | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null)
+    catching_up=$(get_local_status_json | parse_rpc_catching_up)
     network_height=$(get_network_height)
     [ -z "$node_height" ] && node_height="N/A"
     [ -z "$network_height" ] && network_height="N/A"
