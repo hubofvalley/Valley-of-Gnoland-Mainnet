@@ -38,6 +38,8 @@ unrecognized settings produce WARN; this check is not a full TOML validator.
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
+The local sync check reports PASS for `catching_up=false` only when the node also reports a positive numeric `latest_block_height`. Missing, zero, or malformed height produces WARN even when fast-sync is disabled. This is not a guarantee that the node is at network head; the height-gap check remains observational.
+
 ## Exit codes
 
 - `0`: no FAIL results; normal WARN results are allowed.
