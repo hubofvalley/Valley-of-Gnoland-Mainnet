@@ -65,10 +65,15 @@ Option `1b` compares installed source, genesis, and all three executable hashes 
 - Mainnet has no public faucet. Candidate registration still requires GovDAO admission to `r/sys/validators/v0`.
 - Snapshot application remains fail-closed without an independently verified provider.
 
+## Package approval status
+
+For a package submission, use the public mainnet review-stage page: <https://gpas.gno.land/>. It intentionally omits security-sensitive details.
+
 ## Verified endpoints
 
 - Web: `https://gno.land`
 - RPC: `https://rpc.gno.land`
+- Package approval status: `https://gpas.gno.land/`
 - Persistent peers: `g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656`
 - Candidate realm: `r/gnops/valopers`
 - Active validator realm: `r/sys/validators/v0`
