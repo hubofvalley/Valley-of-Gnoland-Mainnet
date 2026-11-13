@@ -36,6 +36,13 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
 
+The local RPC sync check reads `catching_up` as a typed JSON boolean:
+`false` stays `false` rather than being treated as an absent value. Missing,
+malformed, and non-boolean values remain unverified and yield WARN. A reported
+`catching_up=false` produces PASS for local sync only with a positive numeric
+block height; missing, zero, or invalid height produces WARN. Even a positive
+height does not prove the node is at the current network head.
+
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
 ## Exit codes

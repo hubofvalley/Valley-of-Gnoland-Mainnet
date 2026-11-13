@@ -115,6 +115,12 @@ check_persistent_peer_duplicates() {
     fi
 }
 
+# JSON false must remain false: jq's "// empty" treats false as absent.
+# Only actual JSON booleans are valid fast-sync states.
+read_rpc_catching_up() {
+    jq -r '.result.sync_info.catching_up | if type == "boolean" then tostring else empty end'
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -189,7 +195,7 @@ fi
 local_status=$(curl -m 5 -fsS "${GNOLAND_REMOTE%/}/status" 2>/dev/null || true)
 local_network=$(printf '%s' "$local_status" | jq -r '.result.node_info.network // empty' 2>/dev/null || true)
 local_height=$(printf '%s' "$local_status" | jq -r '.result.sync_info.latest_block_height // empty' 2>/dev/null || true)
-local_catching_up=$(printf '%s' "$local_status" | jq -r '.result.sync_info.catching_up // empty' 2>/dev/null || true)
+local_catching_up=$(printf '%s' "$local_status" | read_rpc_catching_up 2>/dev/null || true)
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
     record PASS local_rpc "local RPC reports $EXPECTED_CHAIN_ID"
 elif [ -n "$local_network" ]; then
@@ -201,7 +207,12 @@ fi
 if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
     case "$local_catching_up" in
         false)
-            record PASS local_sync "local RPC reports catching_up=false at height ${local_height:-unknown}"
+            # A false fast-sync flag does not establish block progress.
+            if [[ "$local_height" =~ ^0*[1-9][0-9]*$ ]]; then
+                record PASS local_sync "local RPC reports catching_up=false at height $local_height"
+            else
+                record WARN local_sync "local RPC reports catching_up=false but latest block height is missing, zero, or invalid"
+            fi
             ;;
         true)
             record WARN local_sync "local RPC reports catching_up=true at height ${local_height:-unknown}"
