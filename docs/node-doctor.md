@@ -18,6 +18,7 @@ The doctor checks:
 - the pinned v1.7.0 source tag commit `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`;
 - the effective `p2p.persistent_peers` value, repeated peer IDs, and service startup flags;
+- the active `application.prune_strategy` setting required to be `syncable` by the v1.7.0 mainnet validator guide;
 - local RPC network identity, `catching_up`, height, and live peer count;
 - the official comparison RPC identity and observed height; and
 - basic time and disk safety signals.
@@ -35,6 +36,12 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 `[p2p]` section. Commented examples, settings in unrelated sections, missing
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
+
+The pruning check reads only a single, quoted `prune_strategy` under the active
+`[application]` TOML section. Missing, mismatched, duplicate, commented-out,
+or unsupported settings yield WARN instead of false PASS. This is a read-only
+drift warning, not a TOML validator or proof of actual database pruning.
+It does not modify the node or prescribe a live configuration change.
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
