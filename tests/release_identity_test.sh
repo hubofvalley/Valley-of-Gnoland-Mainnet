@@ -84,13 +84,13 @@ missing_rc=$?
 set -e
 [ "$missing_rc" -eq 2 ] || fail "missing binary must return usage/runtime error status"
 
-[ "$(jq -r '.versioned_release_tag' "$VERSIONS")" = 'v1.7.0' ] || fail "versioned release tag is not pinned"
+[ "$(jq -r '.versioned_release_tag' "$VERSIONS")" = 'v1.7.1' ] || fail "versioned release tag is not pinned"
 [ "$(jq -r '.versioned_binary_assets.platform' "$VERSIONS")" = 'linux_amd64' ] || fail "versioned asset platform is not pinned"
-[ "$(jq -r '.versioned_binary_assets.checksums_sha256' "$VERSIONS")" = '912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3' ] || fail "v1.7.0 CHECKSUMS.txt digest is not pinned"
-[ "$(jq -r '.versioned_binary_assets.gnoland.sha256' "$VERSIONS")" = '5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51' ] || fail "v1.7.0 gnoland digest is not pinned"
-[ "$(jq -r '.versioned_binary_assets.gnoland.reported_version' "$VERSIONS")" = 'v1.7.0' ] || fail "v1.7.0 gnoland identity is not pinned"
-[ "$(jq -r '.versioned_binary_assets.gnokey.sha256' "$VERSIONS")" = '8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e' ] || fail "v1.7.0 gnokey digest is not pinned"
-[ "$(jq -r '.versioned_binary_assets.gnokey.reported_version' "$VERSIONS")" = 'v1.7.0' ] || fail "v1.7.0 gnokey identity is not pinned"
+[ "$(jq -r '.versioned_binary_assets.checksums_sha256' "$VERSIONS")" = '8028057a68bc7ca87fd1e86f87d1eeb77c1bb69b064896b01ce44b48ee8a1642' ] || fail "v1.7.1 CHECKSUMS.txt digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnoland.sha256' "$VERSIONS")" = 'dbe89748f42a633a925153b16567a1229db9bd5004583ce64c80982e3e010565' ] || fail "v1.7.1 gnoland digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnoland.reported_version' "$VERSIONS")" = 'v1.7.1' ] || fail "v1.7.1 gnoland identity is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnokey.sha256' "$VERSIONS")" = 'a3fa71fbb0c6e7789157f7d2eb9f1401ba86eb6ca3d237aba98fe0ec8628c674' ] || fail "v1.7.1 gnokey digest is not pinned"
+[ "$(jq -r '.versioned_binary_assets.gnokey.reported_version' "$VERSIONS")" = 'v1.7.1' ] || fail "v1.7.1 gnokey identity is not pinned"
 
 grep -Fq -- '--expect-sha256' "$CHECK" || fail "release identity helper does not expose digest verification"
 grep -Fq "version = \"develop\"" "$CHECK" && fail "check must inspect the binary rather than hard-code the launch version"

@@ -18,14 +18,22 @@ if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$MAIN" "$DOCTOR"; then
 fi
 
 grep -Fq 'GNOLAND_SOURCE_BRANCH="chain/mainnet"' "$MAIN" || fail "main menu source branch missing"
-grep -Fq 'GNOLAND_SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"' "$MAIN" || fail "main menu source commit missing"
-grep -Fq 'GNOLAND_ASSET_VERSION="v1.7.0"' "$MAIN" || fail "main menu asset version missing"
+grep -Fq 'GNOLAND_SOURCE_COMMIT="83431a7f0261882541a8a8dcf1643e6f246bbbe5"' "$MAIN" || fail "main menu source commit missing"
+grep -Fq 'GNOLAND_ASSET_VERSION="v1.7.1"' "$MAIN" || fail "main menu asset version missing"
 grep -Fq 'OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"' "$MAIN" || fail "official peers missing"
 
 for helper in resources/gnoland_node_install.sh resources/gnoland_node_doctor.sh resources/gnoland_update.sh; do
     remote_helper=$(curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/${runtime_ref}/${helper}") || fail "cannot fetch pinned helper: $helper"
     grep -Fq 'GNOLAND_MAINNET_HOME' <<<"$remote_helper" || fail "pinned helper lacks GNOLAND_MAINNET_HOME: $helper"
     grep -Fq 'GNOLAND_MAINNET_SERVICE_NAME' <<<"$remote_helper" || fail "pinned helper lacks GNOLAND_MAINNET_SERVICE_NAME: $helper"
+    case "$helper" in
+        resources/gnoland_node_doctor.sh)
+            grep -Fq 'EXPECTED_RELEASE_TAG="v1.7.1"' <<<"$remote_helper" || fail "pinned Node Doctor release differs from menu"
+            ;;
+        *)
+            grep -Fq 'ASSET_VERSION="v1.7.1"' <<<"$remote_helper" || fail "pinned install/update release differs from menu"
+            ;;
+    esac
     if grep -Eq 'GNOLAND_(SERVICE_NAME|HOME)([^A-Za-z0-9_]|$)' <<<"$remote_helper"; then
         fail "pinned helper still contains legacy environment names: $helper"
     fi

@@ -22,7 +22,7 @@ bash resources/valleyofGnoland.sh doctor --strict
 
 ## First install
 
-Option `1a` checks service ownership, verifies the v1.7.0 release metadata, stages the exact v1.7.0 source tag, all three Linux amd64 release assets, and the compressed `chain/mainnet` genesis without stopping the live node. It verifies the release checksum file, each executable hash and version, genesis, service configuration, and local RPC before cutover. Existing validator/node secrets are preserved; a persistent backup is optional.
+Option `1a` checks service ownership, verifies the v1.7.1 release metadata, stages the exact v1.7.1 source tag, all three Linux amd64 release assets, and the compressed `chain/mainnet` genesis without stopping the live node. It verifies the release checksum file, each executable hash and version, genesis, service configuration, and local RPC before cutover. Existing validator/node secrets are preserved; a persistent backup is optional.
 
 ## Safe update behavior
 
@@ -38,8 +38,8 @@ Option `1b` compares installed source, genesis, and all three executable hashes 
 
 | Option | Behaviour |
 |---|---|
-| `1a` | Stage and safely install/re-install v1.7.0 runtime assets and source; persistent backup is optional. |
-| `1b` | Compare, stage, verify, and transactionally update the v1.7.0 source/tools with no-op detection, health gate, and rollback. |
+| `1a` | Stage and safely install/re-install v1.7.1 runtime assets and source; persistent backup is optional. |
+| `1b` | Compare, stage, verify, and transactionally update the v1.7.1 source/tools with no-op detection, health gate, and rollback. |
 | `1c` | Fail closed; no verified `gnoland-1` snapshot provider is configured. |
 | `1d` | Add peers manually or restore both official persistent peers. |
 | `1e` | Show local RPC, height, sync, peer, service, and disk status. |
@@ -56,10 +56,18 @@ Option `1b` compares installed source, genesis, and all three executable hashes 
 | `5` | Show guidelines. |
 | `6` | Exit. |
 
+## v1.7.1 rolling release notes
+
+Upstream records `v1.7.1` as a **rolling** mainnet patch released on 2026-11-13: no halt or governance upgrade is required, and `v1.7.0` nodes remain chain-compatible during operator-by-operator upgrades. The runtime source is pinned to commit `83431a7f0261882541a8a8dcf1643e6f246bbbe5`; the original mainnet genesis pin remains unchanged. See the [upstream release](https://github.com/gnolang/gno/releases/tag/v1.7.1) and [mainnet upgrade ledger](https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md).
+
+The official Linux amd64 release now supports glibc 2.35+ (unlike the prior v1.7.0 artifacts). Node startup rejects a positive `p2p.max_recv_buffer_bytes` or `p2p.max_send_buffer_bytes` below 8,454,144; zero or a value at least that large is valid. New defaults are 20 MB for `p2p.max_send_buffer_bytes` and 1,000 requests for `rpc.max_batch_requests`. The VM query response limit is 1 MiB. These are upstream runtime behaviors, **not** configuration changes made by Grand Valley tooling.
+
+When a master key signs transactions, the newer gnokey/gnoclient encoding may produce a different transaction hash than v1.7.0 while both encodings remain valid. External transaction-indexing tools should not assume identical hashes across client versions. Installation and update remain operator-triggered, verified, and rollback-capable; no service changes occur merely by reading this repository.
+
 ## Safety boundaries
 
 - Run as the node OS user, not with `sudo bash`.
-- Review the v1.7.0 source tag, release checksum, executable hashes, genesis checksum, and service path before update.
+- Review the v1.7.1 source tag, release checksum, executable hashes, genesis checksum, and service path before update.
 - RPC and ABCI remain loopback-only; P2P is public by default for peer connectivity.
 - Never paste mnemonics or node secrets into chat or logs.
 - Mainnet has no public faucet. Candidate registration still requires GovDAO admission to `r/sys/validators/v0`.
