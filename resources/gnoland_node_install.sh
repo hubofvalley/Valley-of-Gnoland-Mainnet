@@ -26,25 +26,25 @@ EXTERNAL_NODE_RUNTIME_STARTED=false
 
 readonly CHAIN_ID="gnoland-1"
 readonly SOURCE_BRANCH="chain/mainnet"
-readonly SOURCE_TAG="v1.7.0"
-readonly SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
-readonly RELEASE_TAG="v1.7.0"
-readonly RELEASE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
-readonly RELEASE_ASSET_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.0"
-readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/v1.7.0"
-readonly CHECKSUMS_URL="https://github.com/gnolang/gno/releases/download/v1.7.0/CHECKSUMS.txt"
-readonly CHECKSUMS_SHA256="912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3"
+readonly SOURCE_TAG="v1.7.1"
+readonly SOURCE_COMMIT="83431a7f0261882541a8a8dcf1643e6f246bbbe5"
+readonly RELEASE_TAG="v1.7.1"
+readonly RELEASE_COMMIT="83431a7f0261882541a8a8dcf1643e6f246bbbe5"
+readonly RELEASE_ASSET_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.1"
+readonly RELEASE_API_URL="https://api.github.com/repos/gnolang/gno/releases/tags/v1.7.1"
+readonly CHECKSUMS_URL="https://github.com/gnolang/gno/releases/download/v1.7.1/CHECKSUMS.txt"
+readonly CHECKSUMS_SHA256="8028057a68bc7ca87fd1e86f87d1eeb77c1bb69b064896b01ce44b48ee8a1642"
 readonly GENESIS_RELEASE_TAG="chain/mainnet"
 readonly GENESIS_GZ_URL="https://github.com/gnolang/gno/releases/download/$GENESIS_RELEASE_TAG/genesis.json.gz"
 readonly GENESIS_GZ_SHA256="32a0fef8db3c71fa8360dee39a0149ee961be115ba81363a15f854e4aad446c9"
 readonly GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
 readonly GNO_ASSET="gno_linux_amd64"
-readonly GNO_BIN_SHA256="7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79"
+readonly GNO_BIN_SHA256="0f6c479d898a7fb2b37087a3697c084fd6c2babf1e082cbadc7b8fd9964e5209"
 readonly GNOLAND_ASSET="gnoland_linux_amd64"
-readonly GNOLAND_BIN_SHA256="5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51"
+readonly GNOLAND_BIN_SHA256="dbe89748f42a633a925153b16567a1229db9bd5004583ce64c80982e3e010565"
 readonly GNOKEY_ASSET="gnokey_linux_amd64"
-readonly GNOKEY_BIN_SHA256="8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e"
-readonly ASSET_VERSION="v1.7.0"
+readonly GNOKEY_BIN_SHA256="a3fa71fbb0c6e7789157f7d2eb9f1401ba86eb6ca3d237aba98fe0ec8628c674"
+readonly ASSET_VERSION="v1.7.1"
 readonly PUBLIC_RPC="https://rpc.gno.land"
 readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1.gno.land:26656,g1ck2yeyvvnpl92237gcea0z68jx07a4nnyvuaan@seed-2.gno.land:26656"
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
@@ -221,21 +221,21 @@ check_upstream_release_drift() {
     CURRENT_STAGE="check upstream release drift"
     json=$(curl -m 15 -fsSL "$RELEASE_API_URL" 2>/dev/null || true)
     if [ -z "$json" ]; then
-        echo -e "${YELLOW}Upstream v1.7.0 release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
+        echo -e "${YELLOW}Upstream v1.7.1 release metadata is unavailable; pinned SHA-256 verification remains enforced.${RESET}"
         return 0
     fi
     observed_tag=$(printf '%s' "$json" | jq -r '.tag_name // empty')
     [ "$observed_tag" = "$RELEASE_TAG" ] || { echo "Upstream release tag is ${observed_tag:-unavailable}, expected $RELEASE_TAG." >&2; return 1; }
     checksums_digest=$(printf '%s' "$json" | jq -r '.assets[]? | select(.name=="CHECKSUMS.txt") | .digest' | head -n 1)
-    [ "$checksums_digest" = "sha256:$CHECKSUMS_SHA256" ] || { echo "CHECKSUMS.txt digest differs from the reviewed v1.7.0 release." >&2; return 1; }
+    [ "$checksums_digest" = "sha256:$CHECKSUMS_SHA256" ] || { echo "CHECKSUMS.txt digest differs from the reviewed v1.7.1 release." >&2; return 1; }
     for pair in "$GNO_ASSET $GNO_BIN_SHA256" "$GNOLAND_ASSET $GNOLAND_BIN_SHA256" "$GNOKEY_ASSET $GNOKEY_BIN_SHA256"; do
         set -- $pair
         asset=$1
         expected=$2
         observed_digest=$(printf '%s' "$json" | jq -r --arg name "$asset" '.assets[]? | select(.name==$name) | .digest' | head -n 1)
-        [ "$observed_digest" = "sha256:$expected" ] || { echo "$asset digest differs from the reviewed v1.7.0 release." >&2; return 1; }
+        [ "$observed_digest" = "sha256:$expected" ] || { echo "$asset digest differs from the reviewed v1.7.1 release." >&2; return 1; }
     done
-    echo -e "${GREEN}Official v1.7.0 release metadata and digests still match Valley's reviewed pins.${RESET}"
+    echo -e "${GREEN}Official v1.7.1 release metadata and digests still match Valley's reviewed pins.${RESET}"
 }
 service_belongs_to_instance() {
     local resolved_service_file unit_user unit_workdir

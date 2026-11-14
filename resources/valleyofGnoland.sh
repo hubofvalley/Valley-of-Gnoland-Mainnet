@@ -11,16 +11,16 @@ RESET='\033[0m'
 readonly GNOLAND_CHAIN_ID_DEFAULT="gnoland-1"
 readonly GNOLAND_PUBLIC_RPC_DEFAULT="https://rpc.gno.land"
 readonly GNOLAND_SOURCE_BRANCH="chain/mainnet"
-readonly GNOLAND_SOURCE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
-readonly GNOLAND_RELEASE_TAG="v1.7.0"
-readonly GNOLAND_RELEASE_COMMIT="e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319"
-readonly GNOLAND_ASSET_VERSION="v1.7.0"
+readonly GNOLAND_SOURCE_COMMIT="83431a7f0261882541a8a8dcf1643e6f246bbbe5"
+readonly GNOLAND_RELEASE_TAG="v1.7.1"
+readonly GNOLAND_RELEASE_COMMIT="83431a7f0261882541a8a8dcf1643e6f246bbbe5"
+readonly GNOLAND_ASSET_VERSION="v1.7.1"
 readonly GNOLAND_GENESIS_SHA256="ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0"
-readonly GNO_BIN_SHA256="7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79"
-readonly GNOLAND_BIN_SHA256="5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51"
-readonly GNOKEY_BIN_SHA256="8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e"
-readonly GNOLAND_RELEASE_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.0"
-readonly GNOLAND_CHECKSUMS_SHA256="912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3"
+readonly GNO_BIN_SHA256="0f6c479d898a7fb2b37087a3697c084fd6c2babf1e082cbadc7b8fd9964e5209"
+readonly GNOLAND_BIN_SHA256="dbe89748f42a633a925153b16567a1229db9bd5004583ce64c80982e3e010565"
+readonly GNOKEY_BIN_SHA256="a3fa71fbb0c6e7789157f7d2eb9f1401ba86eb6ca3d237aba98fe0ec8628c674"
+readonly GNOLAND_RELEASE_BASE_URL="https://github.com/gnolang/gno/releases/download/v1.7.1"
+readonly GNOLAND_CHECKSUMS_SHA256="8028057a68bc7ca87fd1e86f87d1eeb77c1bb69b064896b01ce44b48ee8a1642"
 readonly GNOLAND_GNO_ASSET="gno_linux_amd64"
 readonly GNOLAND_GNOLAND_ASSET="gnoland_linux_amd64"
 readonly GNOLAND_GNOKEY_ASSET="gnokey_linux_amd64"
@@ -29,7 +29,7 @@ readonly GNOLAND_ACTIVE_REALM="r/sys/validators/v0"
 readonly GNOLAND_VALOPER_REALM="r/gnops/valopers"
 readonly VALOPER_GAS_FEE="1000000ugnot"
 readonly VALOPER_GAS_WANTED=50000000
-readonly VALLEY_RUNTIME_REF="5934a8eb6e93e50793f51d0c4a7e983ea78d61e0"
+readonly VALLEY_RUNTIME_REF="7a123f65b09da705dedb355f2e0f05a16175b1de"
 readonly NODE_DOCTOR_RELATIVE_PATH="resources/gnoland_node_doctor.sh"
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
 readonly PROFILE_END="# <<< GRAND VALLEY GNOLAND MAINNET <<<"
@@ -51,7 +51,7 @@ run_node_doctor_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/5934a8eb6e93e50793f51d0c4a7e983ea78d61e0/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/7a123f65b09da705dedb355f2e0f05a16175b1de/${NODE_DOCTOR_RELATIVE_PATH}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download the Node Doctor from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
@@ -168,7 +168,7 @@ ${GREEN}Gno.land gnoland-1 Node${RESET}
 - operator keyring: ${CYAN}${GNOKEY_HOME}${RESET}
 - binaries: ${CYAN}$HOME/go/bin/gno, $HOME/go/bin/gnoland, $HOME/go/bin/gnokey${RESET}
 - service file: ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}
-- release assets: ${CYAN}official v1.7.0 Linux amd64 release assets${RESET}
+- release assets: ${CYAN}official v1.7.1 Linux amd64 release assets${RESET}
 - hardware requirements: ${CYAN}not asserted by this Valley${RESET}
 "
 
@@ -195,7 +195,7 @@ Gno.land useful links:${RESET}
 - Gno source: ${BLUE}https://github.com/gnolang/gno${RESET}
 - Source branch: ${BLUE}https://github.com/gnolang/gno/tree/chain/mainnet${RESET}
 - Mainnet deployment: ${BLUE}https://github.com/gnolang/gno/tree/chain/mainnet/misc/deployments/mainnet.gno.land${RESET}
-- Release: ${BLUE}https://github.com/gnolang/gno/releases/tag/v1.7.0${RESET}
+- Release: ${BLUE}https://github.com/gnolang/gno/releases/tag/v1.7.1${RESET}
 
 ${GREEN}Network facts:${RESET}
 - Chain ID: ${CYAN}gnoland-1${RESET}
@@ -313,7 +313,7 @@ run_repository_script() {
     fi
 
     script_file=$(mktemp)
-    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/5934a8eb6e93e50793f51d0c4a7e983ea78d61e0/${relative_path}" -o "$script_file"; then
+    if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/7a123f65b09da705dedb355f2e0f05a16175b1de/${relative_path}" -o "$script_file"; then
         rm -f "$script_file"
         echo -e "${RED}Failed to download ${relative_path} from pinned commit ${VALLEY_RUNTIME_REF}. Nothing was executed.${RESET}" >&2
         return 2
@@ -566,7 +566,7 @@ function deploy_gnoland_node() {
     echo -e "${YELLOW}Service:${RESET} ${CYAN}${GNOLAND_MAINNET_SERVICE_NAME}.service${RESET}"
     echo -e "${YELLOW}Directory:${RESET} ${CYAN}$GNOLAND_MAINNET_HOME${RESET}"
     echo -e "${YELLOW}Default ports:${RESET} P2P ${CYAN}26656${RESET}, RPC ${CYAN}26657${RESET}, ABCI ${CYAN}26658${RESET}; the installer remaps local listeners with the chosen two-digit prefix."
-    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus official v1.7.0 release assets and SHA-256 checksums before cutover."
+    echo -e "${YELLOW}Install/update method:${RESET} exact reviewed source commit plus official v1.7.1 release assets and SHA-256 checksums before cutover."
     echo -e "${YELLOW}Install safety:${RESET} all artifacts are staged first; a persistent backup is optional, while existing validator/node secrets are preserved on a recognized safe reinstall."
     echo -e "${RED}Installation rebuilds Valley node database/config only after staging and explicit confirmation.${RESET}"
     echo
@@ -1388,7 +1388,7 @@ function show_endpoints() {
 function show_guidelines() {
     echo -e "${CYAN}Guidelines on How to Use the Valley of Gnoland${RESET}"
     echo -e "${GREEN}Recommended flow:${RESET}"
-    echo " - 1a Install the node from the pinned mainnet source and official v1.7.0 release assets"
+    echo " - 1a Install the node from the pinned mainnet source and official v1.7.1 release assets"
     echo " - 1e Confirm local RPC reports gnoland-1 and monitor sync"
     echo " - 1g Run the read-only Node Doctor"
     echo " - 2a Manage an operator key only after reviewing key safety"
@@ -1396,8 +1396,8 @@ function show_guidelines() {
     echo -e "${YELLOW}Mainnet candidate registration is enabled in option 2c using the verified upstream procedure. Snapshot application remains disabled until a provider is independently verified.${RESET}"
     echo
     echo -e "${GREEN}Node Interactions:${RESET}"
-    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and official v1.7.0 release assets, then starts gnoland-1."
-    echo "   b) Update Gno/Gnoland/Gnokey: verifies the pinned source and official v1.7.0 release assets."
+    echo "   a) Deploy/Re-deploy Gnoland Node: verifies the pinned source and official v1.7.1 release assets, then starts gnoland-1."
+    echo "   b) Update Gno/Gnoland/Gnokey: verifies the pinned source and official v1.7.1 release assets."
     echo "   c) Apply Snapshot: fails closed without a verified gnoland-1 provider."
     echo "   d) Add/Reset Peers: manages persistent peers and the official mainnet seed list."
     echo "   e) Show Node Status: shows local health and comparison-RPC height."
@@ -1436,7 +1436,7 @@ function menu() {
     echo
     echo "1. Node Interactions"
     echo "   1a. Deploy/Re-deploy Gnoland Node"
-    echo "   1b. Update Gno/Gnoland/Gnokey from official v1.7.0 release assets (${GNOLAND_ASSET_VERSION})"
+    echo "   1b. Update Gno/Gnoland/Gnokey from official v1.7.1 release assets (${GNOLAND_ASSET_VERSION})"
     echo "   1c. Apply Snapshot"
     echo "   1d. Add/Reset Peers"
     echo "   1e. Show Node Status"

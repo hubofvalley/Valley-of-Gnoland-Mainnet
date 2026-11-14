@@ -7,13 +7,13 @@
   "release_tag_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
   "genesis_commit": "9c8eb132e483d6fd324d92c193e629ad65a98a37",
   "release_url": "https://github.com/gnolang/gno/releases/tag/chain/mainnet",
-  "versioned_release_tag": "v1.7.0",
-  "versioned_release_commit": "e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319",
-  "versioned_release_url": "https://github.com/gnolang/gno/releases/tag/v1.7.0",
+  "versioned_release_tag": "v1.7.1",
+  "versioned_release_commit": "83431a7f0261882541a8a8dcf1643e6f246bbbe5",
+  "versioned_release_url": "https://github.com/gnolang/gno/releases/tag/v1.7.1",
   "source_branch": "chain/mainnet",
-  "source_commit": "e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319",
-  "source_branch_commit": "cdcd37bc4c7131c374f4e14300556d3658a0db7c",
-  "source_url": "https://github.com/gnolang/gno/tree/v1.7.0",
+  "source_commit": "83431a7f0261882541a8a8dcf1643e6f246bbbe5",
+  "source_branch_commit": "2f87d7ac6adfc8c70460e34e5977cfe326ead9a0",
+  "source_url": "https://github.com/gnolang/gno/tree/v1.7.1",
   "deployment_path": "misc/deployments/mainnet.gno.land/",
   "source_repository": "https://github.com/gnolang/gno.git",
   "genesis": {
@@ -25,23 +25,23 @@
   },
   "prebuilt_assets": true,
   "versioned_binary_assets": {
-    "base_url": "https://github.com/gnolang/gno/releases/download/v1.7.0",
+    "base_url": "https://github.com/gnolang/gno/releases/download/v1.7.1",
     "platform": "linux_amd64",
-    "checksums_sha256": "912eb2bdc23e715ba3b581ee418f4e572c52407f391c7282bb839ec151a129b3",
+    "checksums_sha256": "8028057a68bc7ca87fd1e86f87d1eeb77c1bb69b064896b01ce44b48ee8a1642",
     "gno": {
       "asset": "gno_linux_amd64",
-      "sha256": "7d7771d899f8d6a266cf3c1fb2a9a997f2ad5791f3082dc0ee54711d9e5b5a79",
-      "reported_version": "v1.7.0"
+      "sha256": "0f6c479d898a7fb2b37087a3697c084fd6c2babf1e082cbadc7b8fd9964e5209",
+      "reported_version": "v1.7.1"
     },
     "gnoland": {
       "asset": "gnoland_linux_amd64",
-      "sha256": "5e5525d53eabe65e6016d0669f5c7569a029c3ff6099105e0e5b7b7e0e461b51",
-      "reported_version": "v1.7.0"
+      "sha256": "dbe89748f42a633a925153b16567a1229db9bd5004583ce64c80982e3e010565",
+      "reported_version": "v1.7.1"
     },
     "gnokey": {
       "asset": "gnokey_linux_amd64",
-      "sha256": "8cfe6bc58cbd010c8077e48a6eb18d0045e8f56289fe2b38eb699957a9bb9a0e",
-      "reported_version": "v1.7.0"
+      "sha256": "a3fa71fbb0c6e7789157f7d2eb9f1401ba86eb6ca3d237aba98fe0ec8628c674",
+      "reported_version": "v1.7.1"
     }
   },
   "endpoints": {
@@ -72,6 +72,6 @@
     "source": "misc/deployments/mainnet.gno.land/VALIDATOR.md"
   },
   "verification_status": "verified_facts_only",
-  "last_reviewed": "2026-10-30",
-  "source_tag": "v1.7.0"
+  "last_reviewed": "2026-11-14",
+  "source_tag": "v1.7.1"
 }

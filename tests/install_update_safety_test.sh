@@ -6,7 +6,7 @@ UPDATER="$ROOT/resources/gnoland_update.sh"
 fail(){ echo "INSTALL_UPDATE_SAFETY_TEST_FAIL: $*" >&2; exit 1; }
 line_of(){ grep -nF -- "$1" "$2" | head -n1 | cut -d: -f1; }
 a=$(line_of 'CURRENT_STAGE="stage all reviewed artifacts before cutover"' "$INSTALLER"); b=$(line_of 'CURRENT_STAGE="atomic install cutover"' "$INSTALLER"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ] || fail "installer staging boundary"
-a=$(line_of 'CURRENT_STAGE="stage and verify v1.7.0 release assets"' "$UPDATER"); b=$(line_of 'CURRENT_STAGE="cut over reviewed runtime"' "$UPDATER"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ] || fail "updater staging boundary"
+a=$(line_of 'CURRENT_STAGE="stage and verify v1.7.1 release assets"' "$UPDATER"); b=$(line_of 'CURRENT_STAGE="cut over reviewed runtime"' "$UPDATER"); [ -n "$a" ] && [ -n "$b" ] && [ "$a" -lt "$b" ] || fail "updater staging boundary"
 grep -Fq 'Create a persistent backup of existing node secrets and operator keyring first? (Y/n): ' "$INSTALLER" || fail "backup prompt"
 grep -Fq 'Preserved existing validator/node secrets exactly for safe reinstall.' "$INSTALLER" || fail "identity preservation"
 grep -Fq rollback_install "$INSTALLER" || fail "installer rollback"
