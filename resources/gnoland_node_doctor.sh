@@ -115,6 +115,39 @@ check_persistent_peer_duplicates() {
     fi
 }
 
+# The v1.7.0 Unix TMKMS listener uses filesystem permissions, not the
+# TCP signer-key allowlist. Only inspect the active listener table; this
+# narrow reader deliberately does not claim to validate all TOML syntax.
+read_active_tmkms_listener_addr() {
+    awk '
+        /^[[:space:]]*\[consensus\.priv_validator\.tmkms_listener\][[:space:]]*(#.*)?$/ {
+            in_listener = 1
+            next
+        }
+        /^[[:space:]]*\[/ { in_listener = 0 }
+        in_listener && /^[[:space:]]*listen_addr[[:space:]]*=[[:space:]]*"/ {
+            value = $0
+            sub(/^[[:space:]]*listen_addr[[:space:]]*=[[:space:]]*"/, "", value)
+            close_quote = index(value, "\"")
+            if (close_quote == 0 || substr(value, close_quote + 1) !~ /^[[:space:]]*(#.*)?$/) {
+                exit
+            }
+            print substr(value, 1, close_quote - 1)
+            exit
+        }
+    ' "$1"
+}
+
+check_tmkms_uds_isolation() {
+    local listener_addr
+    listener_addr=$(read_active_tmkms_listener_addr "$1")
+    case "$listener_addr" in
+        unix://*)
+            record WARN tmkms_uds_isolation "v1.7.0 Unix TMKMS listener uses mode 0600 and ignores allowed_kms_pubkeys; verify signer UID isolation and socket permissions (see upstream TMKMS.md)"
+            ;;
+    esac
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -169,6 +202,7 @@ if [ -f "$CONFIG_FILE" ]; then
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
     check_persistent_peer_duplicates "$CONFIG_FILE"
+    check_tmkms_uds_isolation "$CONFIG_FILE"
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi

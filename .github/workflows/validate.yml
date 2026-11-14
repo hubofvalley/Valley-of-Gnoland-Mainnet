@@ -56,6 +56,9 @@ jobs:
       - name: Run persistent-peer diagnostic fixtures
         run: bash tests/persistent_peer_guard_test.sh
 
+      - name: Run TMKMS Unix listener diagnostic fixtures
+        run: bash tests/tmkms_uds_guard_test.sh
+
       - name: Run release identity regression test
         run: bash tests/release_identity_test.sh
 
