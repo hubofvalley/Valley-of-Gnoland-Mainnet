@@ -18,6 +18,7 @@ The doctor checks:
 - the pinned v1.7.0 source tag commit `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`;
 - the effective `p2p.persistent_peers` value, repeated peer IDs, and service startup flags;
+- root-level `halt_height` and `skip_upgrade_height` overrides in `config.toml`;
 - local RPC network identity, `catching_up`, height, and live peer count;
 - the official comparison RPC identity and observed height; and
 - basic time and disk safety signals.
@@ -35,6 +36,8 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 `[p2p]` section. Commented examples, settings in unrelated sections, missing
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
+
+Upgrade overrides are inspected read-only. A nonzero or unrecognized top-level `halt_height` warns because it may stop this node independently of governance. A nonzero or unrecognized `skip_upgrade_height` warns because, when it matches a governance halt height, it bypasses startup version gates. Zero is the expected default; Node Doctor does not reset either setting. The check ignores commented examples and keys inside other TOML sections. It is not a full TOML validator.
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
