@@ -44,6 +44,9 @@ jobs:
       - name: Run install/update safety regression test
         run: bash tests/install_update_safety_test.sh
 
+      - name: Run pinned release glibc compatibility fixtures
+        run: bash tests/glibc_compatibility_test.sh
+
       - name: Run multi-instance guard regression test
         run: bash tests/multi_instance_test.sh
 
