@@ -115,6 +115,57 @@ check_persistent_peer_duplicates() {
     fi
 }
 
+# v1.7.1 rejects positive P2P buffer budgets below one maximum block response
+# (8 MiB + 64 KiB). Diagnose explicit overrides before an operator upgrades.
+# A missing key uses v1.7.1's 20 MiB default. This is not a TOML validator.
+check_p2p_buffer_limits() {
+    local cfg=$1 probe key status value
+    probe=$(awk '
+        /^[[:space:]]*\[p2p\][[:space:]]*(#.*)?$/ { in_p2p = 1; sections++; next }
+        /^[[:space:]]*\[/ { in_p2p = 0 }
+        in_p2p && /^[[:space:]]*max_(recv|send)_buffer_bytes[[:space:]]*=/ {
+            key = $0
+            sub(/[[:space:]]*=.*/, "", key)
+            gsub(/[[:space:]]/, "", key)
+            raw = $0
+            sub(/^[^=]*=/, "", raw)
+            sub(/[[:space:]]+#.*$/, "", raw)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", raw)
+            count[key]++
+            vals[key] = raw
+        }
+        END {
+            emit("max_recv_buffer_bytes")
+            emit("max_send_buffer_bytes")
+        }
+        function emit(name, raw) {
+            if (sections != 1 || count[name] > 1) {
+                print name "|unverified|"
+            } else if (count[name] == 0) {
+                print name "|default|"
+            } else {
+                raw = vals[name]
+                if (raw == "0") print name "|disabled|0"
+                else if (raw !~ /^[1-9][0-9]*$/ || length(raw) > 15) print name "|unverified|"
+                else if (length(raw) < 7 || (length(raw) == 7 && raw < "8454144")) print name "|small|" raw
+                else print name "|valid|" raw
+            }
+        }
+    ' "$cfg" 2>/dev/null) || {
+        record WARN p2p_buffer_limits "unable to parse P2P buffer settings"
+        return
+    }
+    while IFS='|' read -r key status value; do
+        case "$status" in
+            default) record PASS "p2p_$key" "$key is not overridden; the v1.7.1 default of 20971520 bytes is compatible" ;;
+            valid) record PASS "p2p_$key" "$key=$value satisfies the v1.7.1 minimum" ;;
+            disabled) record WARN "p2p_$key" "$key=0 is accepted by v1.7.1 but disables the per-connection budget" ;;
+            small) record WARN "p2p_$key" "v1.7.1 rejects $key=$value at startup (must be 0 or at least 8454144)" ;;
+            *) record WARN "p2p_$key" "$key cannot be verified from the active [p2p] section" ;;
+        esac
+    done <<< "$probe"
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -169,6 +220,7 @@ if [ -f "$CONFIG_FILE" ]; then
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
     check_persistent_peer_duplicates "$CONFIG_FILE"
+    check_p2p_buffer_limits "$CONFIG_FILE"
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi
