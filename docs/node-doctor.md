@@ -43,3 +43,23 @@ Height comparison is observational; it does not invent a healthy-gap threshold o
 - `0`: no FAIL results; normal WARN results are allowed.
 - `1`: a FAIL result, or any WARN under `--strict`.
 - `2`: invalid command-line or runtime-ref input.
+
+## v1.7.1 P2P buffer compatibility preflight
+
+Before a rolling upgrade to Gnoland v1.7.1, Node Doctor reads the active
+[p2p] section of config.toml and checks max_recv_buffer_bytes and
+max_send_buffer_bytes without modifying either setting. Upstream v1.7.1
+rejects a positive value below 8,454,144 bytes at startup (8 MiB + 64 KiB).
+A missing override is compatible with the upstream default of 20 MiB.
+
+An explicit value of 0 is accepted by Gnoland but disables the per-connection
+buffer budget, so Node Doctor reports a safety WARN rather than a startup
+failure. Values below the minimum and values that cannot be parsed safely
+also produce WARN, including duplicate keys or sections. This bounded check
+accepts plain decimal integers and single-line comments; it does not
+fully parse TOML or certify the live P2P memory footprint.
+
+These results are **upgrade-readiness diagnostics**, not evidence that the
+currently pinned v1.7.0 node would fail to start. No runtime or config is
+changed. See [the v1.7.1 release notes](https://github.com/gnolang/gno/releases/tag/v1.7.1)
+and [the tagged P2P validation source](https://github.com/gnolang/gno/blob/v1.7.1/tm2/pkg/p2p/config/config.go).
