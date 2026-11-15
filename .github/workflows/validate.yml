@@ -53,6 +53,9 @@ jobs:
       - name: Run active P2P peer configuration fixtures
         run: bash tests/active_p2p_peers_test.sh
 
+      - name: Run v1.7.1 P2P buffer compatibility fixtures
+        run: bash tests/p2p_buffer_guard_test.sh
+
       - name: Run persistent-peer diagnostic fixtures
         run: bash tests/persistent_peer_guard_test.sh
 
