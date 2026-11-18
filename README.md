@@ -103,6 +103,7 @@ The `2.x` menu is an operator console rather than a raw-command shortcut. It can
 ## Documentation
 
 - [Usage guide](docs/usage.md)
+- [v1.8.0 coordinated-upgrade and signing-client readiness](docs/v1.8.0-upgrade-readiness.md)
 - [Manual node guide](docs/node-guide.md)
 - [Node Doctor guide](docs/node-doctor.md)
 - [Snapshot safety](docs/snapshots.md)
