@@ -140,4 +140,53 @@ query_active_validator_status g1sign || fail "verified active-set membership que
 [ "$ACTIVE_VALIDATOR_QUERY_STATUS" = "YES" ] ||
     fail "verified active-set membership must resolve as YES"
 
+# Exercise the real command wrapper with a shell-function gnokey stub: no keys or RPC.
+for fn in require_canonical_gnokey gnokey_cmd; do
+    definition=$(extract_function "$fn")
+    [ -n "$definition" ] || fail "unable to extract transaction guard: $fn"
+    eval "$definition"
+done
+GNOKEY_HOME="/nonexistent/gnokey-test-home"
+GNOLAND_PUBLIC_REMOTE="https://unused.invalid"
+MOCK_GNOKEY_VERSION="v1.7.0"
+MOCK_GNOKEY_FAIL=0
+MOCK_MAKETX_CALLS=0
+MOCK_QUERY_CALLS=0
+gnokey() {
+    if [ "$1" = "version" ]; then
+        [ "$MOCK_GNOKEY_FAIL" -eq 0 ] || return 1
+        printf '%s\n' "$MOCK_GNOKEY_VERSION"
+        return 0
+    fi
+    case " $* " in
+        *" maketx "*) MOCK_MAKETX_CALLS=$((MOCK_MAKETX_CALLS + 1)) ;;
+        *" query "*) MOCK_QUERY_CALLS=$((MOCK_QUERY_CALLS + 1)) ;;
+    esac
+    return 0
+}
+
+for version in v1.6.0 v1.7.0 v1.7.0-rc.1 v1.7.1-rc.1 garbage ""; do
+    MOCK_GNOKEY_VERSION="$version"
+    if gnokey_cmd maketx call -broadcast operator 2>/dev/null; then
+        fail "maketx must reject old or unrecognized gnokey version: $version"
+    fi
+done
+MOCK_GNOKEY_VERSION="v1.8.0"
+MOCK_GNOKEY_FAIL=1
+if gnokey_cmd maketx call -broadcast operator 2>/dev/null; then
+    fail "maketx must reject unreadable gnokey versions"
+fi
+MOCK_GNOKEY_FAIL=0
+[ "$MOCK_MAKETX_CALLS" -eq 0 ] || fail "rejected versions reached mock maketx"
+
+for version in v1.7.1 v1.8.0 v1.9.0; do
+    MOCK_GNOKEY_VERSION="$version"
+    gnokey_cmd maketx call -broadcast operator || fail "compatible version rejected: $version"
+done
+[ "$MOCK_MAKETX_CALLS" -eq 3 ] || fail "compatible versions did not reach mock maketx"
+
+MOCK_GNOKEY_VERSION="unreadable"
+gnokey_cmd query auth/gasprice || fail "read-only query must remain available"
+[ "$MOCK_QUERY_CALLS" -eq 1 ] || fail "read-only query was not dispatched"
+
 printf '%s\n' 'VALIDATOR_INTERACTIONS_TEST_OK'
