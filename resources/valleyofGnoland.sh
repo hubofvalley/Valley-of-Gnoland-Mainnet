@@ -325,7 +325,32 @@ run_repository_script() {
     return "$exit_code"
 }
 
+# v1.8.0 rejects non-canonical transaction bytes from clients older than v1.7.1.
+# Check the actual gnokey on PATH immediately before any maketx invocation.
+function require_canonical_gnokey() {
+    local reported major minor patch
+    if ! reported=$(gnokey version 2>/dev/null); then
+        echo "Transaction blocked: unable to verify gnokey version; v1.7.1+ is required for canonical encoding." >&2
+        return 1
+    fi
+    if [[ ! "$reported" =~ ^v([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]]; then
+        printf 'Transaction blocked: unrecognized gnokey version %q; a stable v1.7.1+ build is required.\n' "$reported" >&2
+        return 1
+    fi
+    major="${BASH_REMATCH[1]}"
+    minor="${BASH_REMATCH[2]}"
+    patch="${BASH_REMATCH[3]}"
+    if (( 10#$major > 1 || (10#$major == 1 && (10#$minor > 7 || (10#$minor == 7 && 10#$patch >= 1))) )); then
+        return 0
+    fi
+    printf 'Transaction blocked: gnokey %s predates canonical encoding; use a verified v1.7.1+ signer.\n' "$reported" >&2
+    return 1
+}
+
 function gnokey_cmd() {
+    if [ "$1" = "maketx" ] && ! require_canonical_gnokey; then
+        return 1
+    fi
     gnokey -home "$GNOKEY_HOME" -remote "$GNOLAND_PUBLIC_REMOTE" "$@"
 }
 
