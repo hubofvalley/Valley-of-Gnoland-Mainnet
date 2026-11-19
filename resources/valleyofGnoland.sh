@@ -327,7 +327,7 @@ run_repository_script() {
 
 # v1.8.0 rejects non-canonical transaction bytes from clients older than v1.7.1.
 # Check the actual gnokey on PATH immediately before any maketx invocation.
-require_canonical_gnokey() {
+function require_canonical_gnokey() {
     local reported major minor patch
     if ! reported=$(gnokey version 2>/dev/null); then
         echo "Transaction blocked: unable to verify gnokey version; v1.7.1+ is required for canonical encoding." >&2
