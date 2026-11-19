@@ -146,8 +146,8 @@ for fn in require_canonical_gnokey gnokey_cmd; do
     [ -n "$definition" ] || fail "unable to extract transaction guard: $fn"
     eval "$definition"
 done
-GNOKEY_HOME="/nonexistent/gnokey-test-home"
-GNOLAND_PUBLIC_REMOTE="https://unused.invalid"
+export GNOKEY_HOME="/nonexistent/gnokey-test-home"
+export GNOLAND_PUBLIC_REMOTE="https://unused.invalid"
 MOCK_GNOKEY_VERSION="v1.7.0"
 MOCK_GNOKEY_FAIL=0
 MOCK_MAKETX_CALLS=0
