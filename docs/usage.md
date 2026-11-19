@@ -56,6 +56,21 @@ Option `1b` compares installed source, genesis, and all three executable hashes 
 | `5` | Show guidelines. |
 | `6` | Exit. |
 
+## v1.8.0 signing compatibility
+
+After the coordinated mainnet halt at block 1,651,500 on 2026-11-18,
+`v1.8.0` rejects transactions whose bytes use non-canonical encoding.
+Upstream requires transaction-signing clients built from `v1.7.1` or newer.
+The Grand Valley operator console therefore **blocks `gnokey maketx`** when
+the actual `gnokey version` is older than `v1.7.1`, missing, or unrecognized.
+Read-only `gnokey query` operations remain available.
+
+The repository's current `v1.7.0` installer/update pin is **not** upgraded
+by this guard; use the official, verified release artifacts and a separately
+reviewed halt-aware upgrade. The guard checks CLI version, **not** key safety,
+transaction success, chain sync, or full protocol compatibility. It does not
+sign, simulate, or broadcast transactions during validation.
+
 ## Safety boundaries
 
 - Run as the node OS user, not with `sudo bash`.
