@@ -95,6 +95,48 @@ read_active_persistent_peers() {
     ' "$1"
 }
 
+# Read only the effective [rpc] unsafe value. Fail closed on ambiguous, missing,
+# duplicate, or unsupported TOML forms; never infer that an endpoint is disabled.
+read_active_rpc_unsafe() {
+    awk '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*\[rpc\][[:space:]]*(#.*)?$/ { in_rpc = 1; sections++; next }
+        /^[[:space:]]*\[/ { in_rpc = 0 }
+        in_rpc && /^[[:space:]]*unsafe[[:space:]]*=/ {
+            count++
+            value = $0
+            sub(/^[[:space:]]*unsafe[[:space:]]*=[[:space:]]*/, "", value)
+            if (value ~ /^true[[:space:]]*(#.*)?$/) {
+                setting = "true"
+            } else if (value ~ /^false[[:space:]]*(#.*)?$/) {
+                setting = "false"
+            } else {
+                setting = "unverified"
+            }
+        }
+        END {
+            if (sections == 1 && count == 1) print setting
+            else print "unverified"
+        }
+    ' "$1"
+}
+
+check_rpc_unsafe() {
+    local setting
+    setting=$(read_active_rpc_unsafe "$1")
+    case "$setting" in
+        false)
+            record PASS rpc_unsafe "active rpc.unsafe=false disables unsafe mempool/profiler RPC routes"
+            ;;
+        true)
+            record WARN rpc_unsafe "active rpc.unsafe=true enables privileged mempool/profiler RPC routes; review listener reachability and access controls"
+            ;;
+        *)
+            record WARN rpc_unsafe "active rpc.unsafe could not be verified; do not assume unsafe RPC routes are disabled"
+            ;;
+    esac
+}
+
 # Since v1.5.1, only the last address for a repeated persistent peer ID
 # is dialed. Diagnose duplicate IDs without changing the operator's config.
 check_persistent_peer_duplicates() {
@@ -169,6 +211,7 @@ if [ -f "$CONFIG_FILE" ]; then
         record WARN peers "persistent peers differ from the official mainnet seed list"
     fi
     check_persistent_peer_duplicates "$CONFIG_FILE"
+    check_rpc_unsafe "$CONFIG_FILE"
 else
     record FAIL config "config.toml is missing at $CONFIG_FILE"
 fi
