@@ -17,6 +17,8 @@ The doctor checks:
 - v1.7.0 Linux amd64 `gno`, `gnoland`, and `gnokey` executable hashes;
 - the pinned v1.7.0 source tag commit `e4c2e7d9fe0f6f7aeeda54885ca1fe5cea991319`;
 - the official launch genesis SHA-256 `ea22691003130eae3ba975b7d16460706b5d75ce6c04ae82c0c4faeab7de91f0`;
+- the effective `[rpc] unsafe` setting (privileged mempool flush and profiler routes),
+  with an advisory when the configured value is enabled or cannot be verified;
 - the effective `p2p.persistent_peers` value, repeated peer IDs, and service startup flags;
 - local RPC network identity, `catching_up`, height, and live peer count;
 - the official comparison RPC identity and observed height; and
@@ -35,6 +37,17 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 `[p2p]` section. Commented examples, settings in unrelated sections, missing
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
+
+The RPC unsafe check reads only the active `[rpc]` section in `config.toml`.
+It reports PASS for one explicit `unsafe = false` setting; WARN for `true`,
+missing, duplicate, or unsupported settings. Upstream defaults to `false`,
+but Node Doctor does not treat a missing entry as proof of the effective value.
+When enabled, `unsafe_*` RPC methods include mempool flushing and CPU/heap
+profiler controls with caller-supplied output paths. This is a **configuration
+exposure advisory**, not proof that an endpoint is reachable from the Internet:
+network binding, firewalls, proxies, and authentication remain separate.
+The check never changes RPC configuration. See the [Gnoland v1.7.0 RPC config](https://github.com/gnolang/gno/blob/v1.7.0/tm2/pkg/bft/rpc/config/config.go)
+and [route definitions](https://github.com/gnolang/gno/blob/v1.7.0/tm2/pkg/bft/rpc/core/routes.go).
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
