@@ -56,6 +56,9 @@ jobs:
       - name: Run persistent-peer diagnostic fixtures
         run: bash tests/persistent_peer_guard_test.sh
 
+      - name: Run read-only RPC unsafe configuration fixtures
+        run: bash tests/rpc_unsafe_guard_test.sh
+
       - name: Run release identity regression test
         run: bash tests/release_identity_test.sh
 
