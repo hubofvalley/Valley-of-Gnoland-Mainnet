@@ -20,6 +20,14 @@ bash resources/valleyofGnoland.sh doctor --json
 bash resources/valleyofGnoland.sh doctor --strict
 ```
 
+## v1.8.0 mainnet compatibility gate
+
+The official `gnoland-1` upgrade to `v1.8.0` completed on **2026-11-18** after block `1,651,500` (GovDAO proposal #19). The currently reviewed Grand Valley launcher and its install/update helpers still pin `v1.7.0`, which does **not** satisfy the post-halt `v1.8.0` requirement.
+
+Until a **separately reviewed and validated** halt-aware runtime update replaces these pins, options `1a` and `1b` are deliberately **blocked before any local or remote helper is executed**. A message such as `Already up to date` for the pinned `v1.7.0` assets does not establish compatibility with the live chain. Read-only Node Doctor and status tools remain available. No binary, service, configuration, data, or network changes are made by this guard.
+
+For historical replay from genesis, upstream documents a distinct two-version procedure: use `v1.7.1` up to the `v1.8.0` halt height, then `v1.8.0`. The blocked Grand Valley `v1.7.0` installer/updater are **not** a replay supervisor. Follow the [official mainnet upgrade ledger](https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md) and [v1.8.0 release notes](https://github.com/gnolang/gno/releases/tag/v1.8.0); a reviewed recovery rehearsal is still required before any production upgrade.
+
 ## First install
 
 Option `1a` checks service ownership, verifies the v1.7.0 release metadata, stages the exact v1.7.0 source tag, all three Linux amd64 release assets, and the compressed `chain/mainnet` genesis without stopping the live node. It verifies the release checksum file, each executable hash and version, genesis, service configuration, and local RPC before cutover. Existing validator/node secrets are preserved; a persistent backup is optional.
