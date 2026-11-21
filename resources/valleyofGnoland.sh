@@ -293,11 +293,29 @@ write_valley_profile_block
 # shellcheck source=/dev/null
 source "$HOME/.bash_profile" 2>/dev/null || true
 
+# Mainnet completed the v1.8.0 governance halt after block 1,651,500.
+# This reviewed launcher still pins v1.7.0, which cannot run post-halt
+# blocks. Block both installer and updater before any local or remote helper.
+# A future reviewed v1.8.0+ alignment must explicitly revisit this gate.
+guard_obsolete_mainnet_helpers() {
+    case "$1" in
+        resources/gnoland_node_install.sh|resources/gnoland_update.sh)
+            echo "Grand Valley mainnet install/update blocked: these helpers pin Gnoland v1.7.0, but gnoland-1 requires v1.8.0 after block 1,651,500." >&2
+            echo "Do not use these helpers for post-halt recovery or genesis replay; follow the official upgrade ledger and a separately reviewed upgrade procedure." >&2
+            echo "Official upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md" >&2
+            return 1
+            ;;
+    esac
+    return 0
+}
+
 # Tests and local runs use this function from the checked-out repository. A
 # remote fallback is intentionally absent because this checkout has no verified
 # immutable helper commit.
 run_repository_script() {
     local relative_path=$1 script_dir script_file exit_code
+
+    guard_obsolete_mainnet_helpers "$relative_path" || return 1
 
     if ! script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd); then
         script_dir=""
