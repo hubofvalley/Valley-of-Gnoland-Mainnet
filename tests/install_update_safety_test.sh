@@ -23,7 +23,7 @@ if grep -Eiq 'OCI|stage_oci_binary|v1\\.2\\.0|e75fef82|v1\\.5\\.0|v1\\.5\\.1' "$
 MAIN="$ROOT/resources/valleyofGnoland.sh"
 guard_call=$(line_of 'guard_obsolete_mainnet_helpers "$relative_path" || return 1' "$MAIN")
 local_call=$(line_of 'bash "$script_dir/../$relative_path"' "$MAIN")
-remote_fetch=$(line_of 'if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/' "$MAIN")
+remote_fetch=$(line_of '/${relative_path}" -o "$script_file"; then' "$MAIN")
 [ -n "$guard_call" ] && [ -n "$local_call" ] && [ -n "$remote_fetch" ] ||
     fail "missing obsolete mainnet helper guard or helper execution boundaries"
 [ "$guard_call" -lt "$local_call" ] && [ "$guard_call" -lt "$remote_fetch" ] ||
