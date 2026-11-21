@@ -16,4 +16,38 @@ grep -Fq 'Already up to date.' "$UPDATER" || fail "no-op path"
 grep -Fq 'CHECKSUMS_URL=' "$INSTALLER" || fail "installer checksum URL"
 grep -Fq 'CHECKSUMS_URL=' "$UPDATER" || fail "updater checksum URL"
 if grep -Eiq 'OCI|stage_oci_binary|v1\\.2\\.0|e75fef82|v1\\.5\\.0|v1\\.5\\.1' "$INSTALLER" "$UPDATER"; then fail "stale release logic"; fi
+
+# v1.8.0 became mandatory after the completed governance halt at 1,651,500.
+# Extract only the guard; never invoke the actual launcher, installer, updater,
+# RPC, systemd, keyring, or external network.
+MAIN="$ROOT/resources/valleyofGnoland.sh"
+guard_call=$(line_of 'guard_obsolete_mainnet_helpers "$relative_path" || return 1' "$MAIN")
+local_call=$(line_of 'bash "$script_dir/../$relative_path"' "$MAIN")
+remote_fetch=$(line_of 'if ! curl -fsSL "https://raw.githubusercontent.com/hubofvalley/Valley-of-Gnoland-Mainnet/' "$MAIN")
+[ -n "$guard_call" ] && [ -n "$local_call" ] && [ -n "$remote_fetch" ] ||
+    fail "missing obsolete mainnet helper guard or helper execution boundaries"
+[ "$guard_call" -lt "$local_call" ] && [ "$guard_call" -lt "$remote_fetch" ] ||
+    fail "obsolete mainnet gate must run before local or remote helpers"
+
+run_obsolete_guard() {
+    {
+        sed -n '/^guard_obsolete_mainnet_helpers() {/,/^}/p' "$MAIN"
+        printf '%s\n' 'guard_obsolete_mainnet_helpers "$1"'
+    } | bash -s -- "$1"
+}
+
+for helper in resources/gnoland_node_install.sh resources/gnoland_update.sh; do
+    if output=$(run_obsolete_guard "$helper" 2>&1); then
+        fail "$helper must be blocked for the obsolete v1.7.0 runtime"
+    fi
+    grep -Fq 'requires v1.8.0 after block 1,651,500' <<<"$output" ||
+        fail "$helper must explain the completed upgrade requirement"
+    grep -Fq 'official upgrade ledger' <<<"$output" ||
+        fail "$helper must link the authoritative recovery guidance"
+done
+run_obsolete_guard resources/gnoland_node_doctor.sh >/dev/null ||
+    fail "read-only Node Doctor must remain available"
+run_obsolete_guard resources/apply_snapshot.sh >/dev/null ||
+    fail "unrelated helper paths must remain unchanged"
+
 printf '%s\\n' INSTALL_UPDATE_SAFETY_TEST_OK
