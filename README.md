@@ -2,7 +2,7 @@
 
 Interactive terminal tooling by **Grand Valley** for installing, updating, inspecting, and managing a Gno.land `gnoland-1` mainnet node.
 
-**Mainnet compatibility notice (2026-11-21):** the live `gnoland-1` chain requires Gnoland `v1.8.0` after its 18 November governance halt, while these helpers still pin `v1.7.0`. In this review branch, launcher options `1a` (install) and `1b` (update) are intentionally blocked until a separately validated halt-aware upgrade replaces the obsolete pins. Read-only diagnostics remain available. See the [compatibility gate and replay limits](docs/usage.md#v180-mainnet-compatibility-gate).
+**Mainnet compatibility notice (2026-11-21):** the live `gnoland-1` chain requires Gnoland `v1.8.0` after its 18 November governance halt, while these helpers still pin `v1.7.0`. In this review branch, the direct installer/updater scripts and launcher options `1a` (install) and `1b` (update) are intentionally blocked until a separately validated halt-aware upgrade replaces the obsolete pins. Read-only diagnostics remain available. See the [compatibility gate and replay limits](docs/usage.md#v180-mainnet-compatibility-gate).
 
 ## Overview
 

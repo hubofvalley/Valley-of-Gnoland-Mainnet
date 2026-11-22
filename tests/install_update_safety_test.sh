@@ -50,4 +50,30 @@ run_obsolete_guard resources/gnoland_node_doctor.sh >/dev/null ||
 run_obsolete_guard resources/apply_snapshot.sh >/dev/null ||
     fail "unrelated helper paths must remain unchanged"
 
+
+# The launcher gate cannot protect someone who invokes an installer/updater
+# script directly. Execute only the extracted guard, never the helpers.
+for helper in "$INSTALLER" "$UPDATER"; do
+    direct_guard=$(line_of 'guard_obsolete_direct_helper || exit 1' "$helper")
+    runtime_start=$(line_of 'GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-' "$helper")
+    [ -n "$direct_guard" ] && [ -n "$runtime_start" ] &&
+        [ "$direct_guard" -lt "$runtime_start" ] ||
+        fail "$helper must fail before runtime setup"
+    if grep -Fq 'source "$HOME/.bash_profile"' "$helper"; then
+        profile_source=$(line_of 'source "$HOME/.bash_profile"' "$helper")
+        [ "$direct_guard" -lt "$profile_source" ] ||
+            fail "$helper must fail before shell profile execution"
+    fi
+    if guard_output=$({
+        sed -n '/^guard_obsolete_direct_helper() {/,/^}/p' "$helper"
+        printf '%s\n' 'guard_obsolete_direct_helper'
+    } | bash 2>&1); then
+        fail "$helper direct invocation must reject the obsolete release"
+    fi
+    grep -Fq 'requires Gnoland v1.8.0 after block 1,651,500' <<<"$guard_output" ||
+        fail "$helper must explain why direct invocation is blocked"
+    grep -Fq 'Official upgrade ledger:' <<<"$guard_output" ||
+        fail "$helper must link official recovery guidance"
+done
+
 printf '%s\\n' INSTALL_UPDATE_SAFETY_TEST_OK
