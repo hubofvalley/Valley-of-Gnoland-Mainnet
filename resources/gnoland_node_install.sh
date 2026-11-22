@@ -50,6 +50,18 @@ readonly OFFICIAL_GNOLAND_PEERS="g15rcv5yqef3kvnmueqvkyw8y05sd40jz9p3n5su@seed-1
 readonly PROFILE_BEGIN="# >>> GRAND VALLEY GNOLAND MAINNET >>>"
 readonly PROFILE_END="# <<< GRAND VALLEY GNOLAND MAINNET <<<"
 
+# Defense in depth: direct script execution bypasses the interactive launcher.
+# After mainnet halt 1,651,500, these v1.7.0 helpers are obsolete. Do not
+# remove this gate until a separately reviewed, recovery-tested v1.8.0+ path
+# replaces the installer/updater; changing a tag alone is not validation.
+guard_obsolete_direct_helper() {
+    printf '%s\n' 'Grand Valley mainnet install/update blocked: gnoland-1 requires Gnoland v1.8.0 after block 1,651,500; this helper still pins v1.7.0.' >&2
+    printf '%s\n' 'Official upgrade ledger: https://github.com/gnolang/gno/blob/chain/mainnet/misc/deployments/mainnet.gno.land/UPGRADES.md' >&2
+    return 1
+}
+guard_obsolete_direct_helper || exit 1
+
+
 GNO_SOURCE_DIR=${GNO_SOURCE_DIR:-$HOME/gno}
 GNOLAND_DEPLOYMENT_DIR=${GNOLAND_DEPLOYMENT_DIR:-$GNO_SOURCE_DIR/misc/deployments/mainnet.gno.land}
 GNOLAND_MAINNET_HOME=${GNOLAND_MAINNET_HOME:-$GNO_SOURCE_DIR/gnoland-data}
