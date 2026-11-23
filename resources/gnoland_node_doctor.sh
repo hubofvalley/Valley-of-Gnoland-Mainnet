@@ -182,6 +182,24 @@ if [ -n "$service_file" ] && [ -f "$service_file" ]; then
     else
         record FAIL service_chain "systemd unit does not contain the expected mainnet startup flags"
     fi
+
+    # Inspect the effective start command, including systemd drop-ins. The
+    # pinned gnoland release defaults to debug, which can exhaust log storage.
+    effective_exec=$(systemctl show "$GNOLAND_MAINNET_SERVICE_NAME" -p ExecStart --value 2>/dev/null || true)
+    log_level_flags=$(printf '%s\n' "$effective_exec" | grep -Eo -- '(^|[[:space:]])-{1,2}log-level(=|[[:space:]]+)[^[:space:];]+' || true)
+    if [ -z "$log_level_flags" ]; then
+        record WARN service_log_level "effective systemd start command has no verifiable log level; gnoland defaults to debug"
+    else
+        log_level=$(printf '%s\n' "$log_level_flags" | sed -E 's/^[[:space:]]*-{1,2}log-level(=|[[:space:]]+)//')
+        case "$log_level" in
+            info|warn|error)
+                record PASS service_log_level "effective systemd command explicitly sets log level $log_level"
+                ;;
+            *)
+                record WARN service_log_level "effective systemd log level is debug, invalid, or ambiguous; inspect journal disk usage"
+                ;;
+        esac
+    fi
 else
     record FAIL service "systemd unit for ${GNOLAND_MAINNET_SERVICE_NAME}.service was not found"
 fi
