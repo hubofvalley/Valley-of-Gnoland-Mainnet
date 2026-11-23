@@ -9,7 +9,7 @@ trap 'rm -rf "$TEST_ROOT"' EXIT
 mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/home" "$TEST_ROOT/data"
 cat > "$TEST_ROOT/bin/systemctl" <<'MOCK'
 #!/bin/bash
-case " $* " in
+case "$*" in
     *" -p FragmentPath "*) printf '%s\n' "$TEST_SERVICE_FILE" ;;
     *" -p ExecStart "*) printf '%s\n' "$TEST_EFFECTIVE_EXEC" ;;
     *) exit 1 ;;
