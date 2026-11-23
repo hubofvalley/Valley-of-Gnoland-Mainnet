@@ -41,7 +41,7 @@ for a single explicit `-log-level` or `--log-level` setting. It reports PASS
 for `info`, `warn`, or `error`, and WARN for `debug`, omitted flags,
 duplicates, unsupported values, or unreadable commands. The pinned Gnoland
 `v1.7.0` binary defaults to `debug` without this flag, potentially
-generating excessive validator logs. The Grand Valley installer already
+generating excessive validator logs. The mainnet installer already
 specifies `--log-level info`; this is a **configuration-drift diagnostic**
 for existing or manually customized services, not an installer change.
 The check does not inspect journal size or modify logging settings.
