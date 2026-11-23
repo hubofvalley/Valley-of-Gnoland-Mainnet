@@ -36,6 +36,16 @@ accepts the active, single-line quoted `persistent_peers` string inside the
 values, and unsupported forms must not produce a false PASS. Nonmatching or
 unrecognized settings produce WARN; this check is not a full TOML validator.
 
+Node Doctor also inspects systemd's **effective** `ExecStart` (including drop-ins)
+for a single explicit `-log-level` or `--log-level` setting. It reports PASS
+for `info`, `warn`, or `error`, and WARN for `debug`, omitted flags,
+duplicates, unsupported values, or unreadable commands. The pinned Gnoland
+`v1.7.0` binary defaults to `debug` without this flag, potentially
+generating excessive validator logs. The mainnet installer already
+specifies `--log-level info`; this is a **configuration-drift diagnostic**
+for existing or manually customized services, not an installer change.
+The check does not inspect journal size or modify logging settings.
+
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
 ## Exit codes
