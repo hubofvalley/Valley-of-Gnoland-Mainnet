@@ -47,4 +47,32 @@ if grep -Eiq 'faucet\.gno\.land|chain/gnoland1\.0' "$DOCTOR"; then
     fail "stale endpoint or release wording remains in Node Doctor"
 fi
 
+# Isolated timestamp checks use the actual helper, a fixed clock, and no RPC.
+run_age_guard() {
+    {
+        printf '%s\n' 'record() { printf "%s|%s|%s\n" "$1" "$2" "$3"; }'
+        sed -n '/^check_block_freshness() {/,/^}/p' "$DOCTOR"
+        printf '%s\n' 'check_block_freshness local_block_age "$1" "$2"'
+    } | bash -s -- "$1" "$2"
+}
+
+assert_age() {
+    local timestamp=$1 now=$2 expected=$3 observed
+    observed=$(run_age_guard "$timestamp" "$now")
+    [[ "$observed" == "$expected"* ]] || fail "unexpected age result: $observed"
+}
+
+# 2026-11-26T06:00:00Z = 1795672800.
+assert_age '2026-11-26T06:00:00.123456789Z' 1795672800 'PASS|local_block_age|latest block timestamp is 0 seconds old'
+assert_age '2026-11-26T05:55:00Z' 1795672800 'PASS|local_block_age|latest block timestamp is 300 seconds old'
+assert_age '2026-11-26T05:54:59Z' 1795672800 'WARN|local_block_age|latest block timestamp is 301 seconds old'
+assert_age '2026-11-26T06:00:01Z' 1795672800 'WARN|local_block_age|latest block timestamp is ahead'
+assert_age '1970-01-01T00:00:00Z' 1795672800 'WARN|local_block_age|latest block age could not be verified'
+assert_age '2026-02-30T00:00:00Z' 1795672800 'WARN|local_block_age|latest block age could not be verified'
+assert_age '' 1795672800 'WARN|local_block_age|latest block age could not be verified'
+assert_age 'yesterday' 1795672800 'WARN|local_block_age|latest block age could not be verified'
+assert_age '2026-11-26T06:00:00Z' '' 'WARN|local_block_age|latest block age could not be verified'
+grep -Fq 'check_block_freshness local_block_age "$local_block_time" "$now_epoch"' "$DOCTOR" || fail "local block age check missing"
+grep -Fq 'check_block_freshness public_block_age "$public_block_time" "$now_epoch"' "$DOCTOR" || fail "comparison block age check missing"
+
 printf '%s\n' 'NODE_DOCTOR_TEST_OK'

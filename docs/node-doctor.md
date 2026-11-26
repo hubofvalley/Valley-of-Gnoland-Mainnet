@@ -38,6 +38,8 @@ unrecognized settings produce WARN; this check is not a full TOML validator.
 
 Height comparison is observational; it does not invent a healthy-gap threshold or infer validator admission.
 
+Node Doctor also reports the age of the latest block timestamp from both the local and official comparison RPC, using the existing status responses and only for the expected chain ID. A timestamp older than 300 seconds, ahead of the host clock, missing, or unparseable produces WARN. The five-minute threshold is a local advisory, not a Gnoland protocol limit or proof of consensus health. A halted chain can still serve RPC; both endpoints may be stale during a coordinated halt, and an inaccurate host clock can affect the age calculation. This check does not restart or modify a node. See [upstream chain upgrade behavior](https://github.com/gnolang/gno/blob/v1.8.0/gno.land/cmd/gnoland/UPGRADES.md#what-a-halt-actually-looks-like).
+
 ## Exit codes
 
 - `0`: no FAIL results; normal WARN results are allowed.
