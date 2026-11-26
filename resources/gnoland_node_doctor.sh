@@ -115,6 +115,30 @@ check_persistent_peer_duplicates() {
     fi
 }
 
+# The timestamp is block metadata, not proof that consensus is progressing.
+# Five minutes is a local diagnostic advisory, not a chain protocol limit.
+check_block_freshness() {
+    local label=$1 timestamp=$2 now=$3 epoch age
+    if [[ ! "$timestamp" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?Z$ ]] ||
+        [[ ! "$now" =~ ^[1-9][0-9]{0,9}$ ]]; then
+        record WARN "$label" "latest block age could not be verified"
+        return
+    fi
+    epoch=$(date -u -d "$timestamp" +%s 2>/dev/null) || epoch=""
+    if [[ ! "$epoch" =~ ^[1-9][0-9]{0,9}$ ]]; then
+        record WARN "$label" "latest block age could not be verified"
+        return
+    fi
+    age=$((now - epoch))
+    if [ "$age" -lt 0 ]; then
+        record WARN "$label" "latest block timestamp is ahead of the host clock; check clock synchronization"
+    elif [ "$age" -gt 300 ]; then
+        record WARN "$label" "latest block timestamp is $age seconds old (300-second advisory); investigate sync, clock or a chain halt"
+    else
+        record PASS "$label" "latest block timestamp is $age seconds old (300-second advisory only)"
+    fi
+}
+
 check_binary() {
     local label=$1 path=$2 expected=$3 observed
     if [ ! -x "$path" ]; then
@@ -249,6 +273,17 @@ if [ "$local_network" = "$EXPECTED_CHAIN_ID" ] && [ "$public_network" = "$EXPECT
     else
         record WARN height_gap "local/comparison heights could not be compared; no healthy-gap threshold is asserted"
     fi
+fi
+
+# Reuse the existing status responses; never infer liveness from RPC reachability.
+now_epoch=$(date -u +%s 2>/dev/null || true)
+if [ "$local_network" = "$EXPECTED_CHAIN_ID" ]; then
+    local_block_time=$(printf '%s' "$local_status" | jq -r '.result.sync_info.latest_block_time | strings' 2>/dev/null || true)
+    check_block_freshness local_block_age "$local_block_time" "$now_epoch"
+fi
+if [ "$public_network" = "$EXPECTED_CHAIN_ID" ]; then
+    public_block_time=$(printf '%s' "$public_status" | jq -r '.result.sync_info.latest_block_time | strings' 2>/dev/null || true)
+    check_block_freshness public_block_age "$public_block_time" "$now_epoch"
 fi
 
 if command -v timedatectl >/dev/null 2>&1; then
